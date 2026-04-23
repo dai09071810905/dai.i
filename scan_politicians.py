@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from __future__ import annotations
+from __future__ import annotation
 
 import concurrent.futures
 import datetime as dt
@@ -136,13 +136,19 @@ def now_iso() -> str:
 
 
 def get_text(url: str) -> Optional[str]:
+
     try:
+
         response = session.get(url, timeout=TIMEOUT)
+
         response.raise_for_status()
-        if not response.encoding:
-            response.encoding = response.apparent_encoding
+
+        response.encoding = response.apparent_encoding
+
         return response.text
+
     except Exception:
+
         return None
 
 
@@ -183,10 +189,6 @@ def is_person_name(text: str) -> bool:
 
 
 def get_shugiin_members() -> List[Member]:
-    """
-    衆議院は現時点で旧一覧URLがメンテナンス応答になりやすいため、
-    Wikipedia の「衆議院議員一覧」ページから現職一覧を取得する。
-    """
     url = "https://ja.wikipedia.org/wiki/衆議院議員一覧"
     html = get_text(url)
     if not html:
@@ -204,7 +206,7 @@ def get_shugiin_members() -> List[Member]:
         name = lines[i]
         party_line = lines[i + 1]
 
-        if not is_person_name(name):
+        if not re.fullmatch(r"[一-龥々〆ヵヶぁ-んァ-ンーA-Za-z・ 　]{2,40}", name):
             continue
         if not (party_line.startswith("（") and party_line.endswith("）")):
             continue
@@ -218,68 +220,6 @@ def get_shugiin_members() -> List[Member]:
                 chamber="衆議院",
                 name=clean_name(name),
                 party=party,
-            )
-        )
-
-    dedup = {(m.chamber, m.name): m for m in members}
-    return list(dedup.values())
-
-
-def get_sangiin_members() -> List[Member]:
-    """
-    参議院は公式の議員一覧（50音順）本体ページから取得
-    """
-    url = "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm"
-    html = get_text(url)
-    if not html:
-        return []
-
-    soup = BeautifulSoup(html, "html.parser")
-    text = soup.get_text("\n")
-
-    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
-    lines = [line for line in lines if line]
-
-    party_map = {
-        "自民": "自由民主党",
-        "立憲": "立憲民主党",
-        "維新": "日本維新の会",
-        "公明": "公明党",
-        "民主": "国民民主党",
-        "参政": "参政党",
-        "共産": "日本共産党",
-        "れ新": "れいわ新選組",
-        "保守": "日本保守党",
-        "沖縄": "沖縄の風",
-        "みら": "チームみらい",
-        "社民": "社会民主党",
-    }
-
-    members: List[Member] = []
-
-    for i in range(len(lines) - 4):
-        name = lines[i]
-        reading = lines[i + 1]
-        party_abbr = lines[i + 2]
-        district = lines[i + 3]
-        term = lines[i + 4]
-
-        if not is_person_name(name):
-            continue
-        if not re.fullmatch(r"[ぁ-んー ]{2,60}", reading):
-            continue
-        if "令和" not in term:
-            continue
-        if party_abbr not in party_map:
-            continue
-        if len(district) > 20:
-            continue
-
-        members.append(
-            Member(
-                chamber="参議院",
-                name=clean_name(name),
-                party=party_map[party_abbr],
             )
         )
 
