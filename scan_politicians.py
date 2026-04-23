@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 
 
 OUT_FILE = Path("data.json")
-USER_AGENT = "DietCertDashboard/1.0 (+GitHub Actions)"
+USER_AGENT = "DietCertDashboard/1.1 (+GitHub Actions)"
 TIMEOUT = 20
 MAX_ENRICH_WORKERS = 12
 MAX_SCAN_WORKERS = 20
@@ -59,19 +59,43 @@ PARTY_NORMALIZATION = {
     "国民": "国民民主党",
     "国民民主": "国民民主党",
     "国民民主党": "国民民主党",
+    "民主": "国民民主党",
     "共産": "日本共産党",
     "日本共産": "日本共産党",
     "日本共産党": "日本共産党",
     "れいわ": "れいわ新選組",
     "れいわ新選組": "れいわ新選組",
+    "れ新": "れいわ新選組",
     "参政": "参政党",
     "参政党": "参政党",
     "社民": "社会民主党",
     "社会民主党": "社会民主党",
     "保守": "日本保守党",
     "日本保守党": "日本保守党",
+    "沖縄": "沖縄の風",
+    "沖縄の風": "沖縄の風",
+    "みら": "チームみらい",
+    "チームみらい": "チームみらい",
     "無所属": "無所属",
     "無": "無所属",
+}
+
+# 衆院一覧ページに出やすい会派名の候補
+SHUGIIN_PARTIES = {
+    "自由民主党",
+    "立憲民主党",
+    "日本維新の会",
+    "公明党",
+    "国民民主党",
+    "日本共産党",
+    "れいわ新選組",
+    "参政党",
+    "日本保守党",
+    "社会民主党",
+    "チームみらい",
+    "無所属",
+    "中道改革連合",
+    "減税日本・ゆうこく連合",
 }
 
 
@@ -133,6 +157,7 @@ def normalize_party(value: str) -> str:
 
 def clean_name(name: str) -> str:
     name = name.replace("　", " ").strip()
+    name = re.sub(r"\s*\[.*?\]", "", name)
     name = re.sub(r"[君氏]+$", "", name).strip()
     return name
 
@@ -153,59 +178,113 @@ def clean_url(url: Optional[str]) -> Optional[str]:
     return url
 
 
+def is_person_name(text: str) -> bool:
+    return bool(re.fullmatch(r"[一-龥々〆ヵヶぁ-んァ-ンーA-Za-z・ 　]{2,40}", text))
+
+
 def get_shugiin_members() -> List[Member]:
-    urls = [
-        f"https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/{i}giin.htm"
-        for i in range(1, 7)
-    ]
-
-    members: List[Member] = []
-    pattern = re.compile(r"([^\s,]+(?:\s+[^\s,]+)*)君,\s*([^\s<.。]+)")
-
-    for url in urls:
-        text = get_text(url)
-        if not text:
-            continue
-
-        for match in pattern.finditer(text):
-            name = clean_name(match.group(1))
-            party = normalize_party(match.group(2))
-            if name:
-                members.append(Member(chamber="衆議院", name=name, party=party))
-
-    return list({(m.chamber, m.name): m for m in members}.values())
-
-
-def get_sangiin_members() -> List[Member]:
-    html = get_text("https://www.sangiin.go.jp/japanese/joho1/kousei/giin/current/giin.htm")
+    """
+    衆議院は現時点で旧一覧URLがメンテナンス応答になりやすいため、
+    Wikipedia の「衆議院議員一覧」ページから現職一覧を取得する。
+    """
+    url = "https://ja.wikipedia.org/wiki/衆議院議員一覧"
+    html = get_text(url)
     if not html:
         return []
 
     soup = BeautifulSoup(html, "html.parser")
-    lines = [re.sub(r"\s+", " ", line).strip() for line in soup.get_text("\n").splitlines()]
+    text = soup.get_text("\n")
+
+    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
     lines = [line for line in lines if line]
 
-    party_names = sorted(set(PARTY_NORMALIZATION.values()), key=len, reverse=True)
     members: List[Member] = []
 
-    for i, line in enumerate(lines):
-        if len(line) > 30:
+    for i in range(len(lines) - 1):
+        name = lines[i]
+        party_line = lines[i + 1]
+
+        if not is_person_name(name):
             continue
-        if not re.fullmatch(r"[一-龥々〆ヵヶぁ-んァ-ンー]+\s?[一-龥々〆ヵヶぁ-んァ-ンー]+", line):
+        if not (party_line.startswith("（") and party_line.endswith("）")):
             continue
 
-        window = " ".join(lines[i + 1:i + 7])
-        party = ""
+        party = normalize_party(party_line.strip("（）").strip())
+        if party not in SHUGIIN_PARTIES:
+            continue
 
-        for party_name in party_names:
-            if party_name in window:
-                party = party_name
-                break
+        members.append(
+            Member(
+                chamber="衆議院",
+                name=clean_name(name),
+                party=party,
+            )
+        )
 
-        if party:
-            members.append(Member(chamber="参議院", name=line, party=party))
+    dedup = {(m.chamber, m.name): m for m in members}
+    return list(dedup.values())
 
-    return list({(m.chamber, m.name): m for m in members}.values())
+
+def get_sangiin_members() -> List[Member]:
+    """
+    参議院は公式の議員一覧（50音順）本体ページから取得
+    """
+    url = "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm"
+    html = get_text(url)
+    if not html:
+        return []
+
+    soup = BeautifulSoup(html, "html.parser")
+    text = soup.get_text("\n")
+
+    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
+    lines = [line for line in lines if line]
+
+    party_map = {
+        "自民": "自由民主党",
+        "立憲": "立憲民主党",
+        "維新": "日本維新の会",
+        "公明": "公明党",
+        "民主": "国民民主党",
+        "参政": "参政党",
+        "共産": "日本共産党",
+        "れ新": "れいわ新選組",
+        "保守": "日本保守党",
+        "沖縄": "沖縄の風",
+        "みら": "チームみらい",
+        "社民": "社会民主党",
+    }
+
+    members: List[Member] = []
+
+    for i in range(len(lines) - 4):
+        name = lines[i]
+        reading = lines[i + 1]
+        party_abbr = lines[i + 2]
+        district = lines[i + 3]
+        term = lines[i + 4]
+
+        if not is_person_name(name):
+            continue
+        if not re.fullmatch(r"[ぁ-んー ]{2,60}", reading):
+            continue
+        if "令和" not in term:
+            continue
+        if party_abbr not in party_map:
+            continue
+        if len(district) > 20:
+            continue
+
+        members.append(
+            Member(
+                chamber="参議院",
+                name=clean_name(name),
+                party=party_map[party_abbr],
+            )
+        )
+
+    dedup = {(m.chamber, m.name): m for m in members}
+    return list(dedup.values())
 
 
 def search_wikipedia(name: str, chamber: str) -> Tuple[Optional[str], Optional[str]]:
@@ -542,9 +621,17 @@ def summarize(results: List[ScanResult]) -> dict:
 
 
 def main() -> None:
-    members = get_shugiin_members() + get_sangiin_members()
-    members = sorted({(m.chamber, m.name): m for m in members}.values(), key=lambda m: (m.chamber, m.name))
+    shugiin_members = get_shugiin_members()
+    sangiin_members = get_sangiin_members()
+    members = shugiin_members + sangiin_members
 
+    members = sorted(
+        {(m.chamber, m.name): m for m in members}.values(),
+        key=lambda m: (m.chamber, m.name),
+    )
+
+    print(f"Shugiin fetched: {len(shugiin_members)}")
+    print(f"Sangiin fetched: {len(sangiin_members)}")
     print(f"Current members fetched: {len(members)}")
 
     enriched: List[Member] = []
@@ -573,7 +660,10 @@ def main() -> None:
         "results": [asdict(result) for result in results],
     }
 
-    OUT_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    OUT_FILE.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
     print(f"Wrote {OUT_FILE} with {len(results)} rows")
 
 
