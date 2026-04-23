@@ -13,6 +13,13 @@ body {
   padding: 40px;
 }
 
+.card {
+  background: rgba(0,0,0,0.3);
+  padding: 30px;
+  border-radius: 15px;
+  display: inline-block;
+}
+
 button {
   padding: 15px 25px;
   font-size: 18px;
@@ -20,6 +27,7 @@ button {
   border-radius: 10px;
   background: #ffcc00;
   cursor: pointer;
+  margin-top: 20px;
 }
 
 .wave-container {
@@ -35,7 +43,6 @@ button {
   height: 100%;
   background: rgba(255,255,255,0.5);
   border-radius: 40%;
-  animation: none;
 }
 
 @keyframes waveMove {
@@ -53,16 +60,18 @@ button {
 
 <body>
 
-<h1>🏄 Dai Surf Forecast</h1>
-<p>Pererenan</p>
+<div class="card">
+  <h1>🏄 Dai Surf Forecast</h1>
+  <p>Pererenan</p>
 
-<button onclick="showWave()">今日の波予想</button>
+  <button onclick="showWave()">今日の波予想</button>
 
-<div class="wave-container">
-  <div id="wave" class="wave"></div>
+  <div class="wave-container">
+    <div id="wave" class="wave"></div>
+  </div>
+
+  <p id="result"></p>
 </div>
-
-<p id="result"></p>
 
 <script>
 function showWave() {
