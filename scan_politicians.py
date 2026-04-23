@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 
 
 OUT_FILE = Path("data.json")
-USER_AGENT = "DietCertDashboard/1.1 (+GitHub Actions)"
+USER_AGENT = "DietCertDashboard/1.2 (+GitHub Actions)"
 TIMEOUT = 20
 MAX_ENRICH_WORKERS = 12
 MAX_SCAN_WORKERS = 20
@@ -80,7 +80,6 @@ PARTY_NORMALIZATION = {
     "無": "無所属",
 }
 
-# 衆院一覧ページに出やすい会派名の候補
 SHUGIIN_PARTIES = {
     "自由民主党",
     "立憲民主党",
@@ -136,19 +135,12 @@ def now_iso() -> str:
 
 
 def get_text(url: str) -> Optional[str]:
-
     try:
-
         response = session.get(url, timeout=TIMEOUT)
-
         response.raise_for_status()
-
         response.encoding = response.apparent_encoding
-
         return response.text
-
     except Exception:
-
         return None
 
 
@@ -188,7 +180,34 @@ def is_person_name(text: str) -> bool:
     return bool(re.fullmatch(r"[一-龥々〆ヵヶぁ-んァ-ンーA-Za-z・ 　]{2,40}", text))
 
 
-def get_shugiin_members() -> List[Member]:
+def get_shugiin_members_from_official() -> List[Member]:
+    """
+    旧衆院一覧URL。現在メンテナンス中のことがあるので、
+    メンテ判定されたら空配列を返してフォールバックさせる。
+    """
+    url = "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/1giin.htm"
+    html = get_text(url)
+    if not html:
+        return []
+
+    lower = html.lower()
+    if "under maintenance" in lower or "メンテナンス中" in html:
+        return []
+
+    members: List[Member] = []
+    pattern = re.compile(r"([^\s,]+(?:\s+[^\s,]+)*)君,\s*([^\s<.。]+)")
+
+    for match in pattern.finditer(html):
+        name = clean_name(match.group(1))
+        party = normalize_party(match.group(2))
+        if name:
+            members.append(Member(chamber="衆議院", name=name, party=party))
+
+    dedup = {(m.chamber, m.name): m for m in members}
+    return list(dedup.values())
+
+
+def get_shugiin_members_from_wikipedia() -> List[Member]:
     url = "https://ja.wikipedia.org/wiki/衆議院議員一覧"
     html = get_text(url)
     if not html:
@@ -206,7 +225,7 @@ def get_shugiin_members() -> List[Member]:
         name = lines[i]
         party_line = lines[i + 1]
 
-        if not re.fullmatch(r"[一-龥々〆ヵヶぁ-んァ-ンーA-Za-z・ 　]{2,40}", name):
+        if not is_person_name(name):
             continue
         if not (party_line.startswith("（") and party_line.endswith("）")):
             continue
@@ -220,6 +239,64 @@ def get_shugiin_members() -> List[Member]:
                 chamber="衆議院",
                 name=clean_name(name),
                 party=party,
+            )
+        )
+
+    dedup = {(m.chamber, m.name): m for m in members}
+    return list(dedup.values())
+
+
+def get_shugiin_members() -> List[Member]:
+    official = get_shugiin_members_from_official()
+    if official:
+        return official
+    return get_shugiin_members_from_wikipedia()
+
+
+def get_sangiin_members() -> List[Member]:
+    url = "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm"
+    html = get_text(url)
+    if not html:
+        return []
+
+    soup = BeautifulSoup(html, "html.parser")
+    text = soup.get_text("\n")
+
+    party_map = {
+        "自民": "自由民主党",
+        "立憲": "立憲民主党",
+        "維新": "日本維新の会",
+        "公明": "公明党",
+        "民主": "国民民主党",
+        "参政": "参政党",
+        "共産": "日本共産党",
+        "れ新": "れいわ新選組",
+        "保守": "日本保守党",
+        "沖縄": "沖縄の風",
+        "みら": "チームみらい",
+        "社民": "社会民主党",
+        "無所属": "無所属",
+    }
+
+    members: List[Member] = []
+
+    pattern = re.compile(
+        r"([一-龥々〆ヵヶぁ-んァ-ンー ]{2,40})\s+"
+        r"([ぁ-んー ]{2,60})\s+"
+        r"(自民|立憲|維新|公明|民主|参政|共産|れ新|保守|沖縄|みら|社民|無所属)\s+"
+        r"(\S+)\s+"
+        r"(令和\d+年\d+月\d+日)"
+    )
+
+    for match in pattern.finditer(text):
+        name = clean_name(match.group(1))
+        party_abbr = match.group(3)
+
+        members.append(
+            Member(
+                chamber="参議院",
+                name=name,
+                party=party_map[party_abbr],
             )
         )
 
@@ -562,89 +639,7 @@ def summarize(results: List[ScanResult]) -> dict:
 
 def main() -> None:
     shugiin_members = get_shugiin_members()
-def get_sangiin_members() -> List[Member]:
-
-    url = "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm"
-
-    html = get_text(url)
-
-    if not html:
-
-        return []
-
-    soup = BeautifulSoup(html, "html.parser")
-
-    text = soup.get_text("\n")
-
-    party_map = {
-
-        "自民": "自由民主党",
-
-        "立憲": "立憲民主党",
-
-        "維新": "日本維新の会",
-
-        "公明": "公明党",
-
-        "民主": "国民民主党",
-
-        "参政": "参政党",
-
-        "共産": "日本共産党",
-
-        "れ新": "れいわ新選組",
-
-        "保守": "日本保守党",
-
-        "沖縄": "沖縄の風",
-
-        "みら": "チームみらい",
-
-        "社民": "社会民主党",
-
-        "無所属": "無所属",
-
-    }
-
-    members: List[Member] = []
-
-    pattern = re.compile(
-
-        r"([一-龥々〆ヵヶぁ-んァ-ンー ]{2,40})\s+"
-
-        r"([ぁ-んー ]{2,60})\s+"
-
-        r"(自民|立憲|維新|公明|民主|参政|共産|れ新|保守|沖縄|みら|社民|無所属)\s+"
-
-        r"(\S+)\s+"
-
-        r"(令和\d+年\d+月\d+日)"
-
-    )
-
-    for match in pattern.finditer(text):
-
-        name = clean_name(match.group(1))
-
-        party_abbr = match.group(3)
-
-        members.append(
-
-            Member(
-
-                chamber="参議院",
-
-                name=name,
-
-                party=party_map[party_abbr],
-
-            )
-
-        )
-
-    dedup = {(m.chamber, m.name): m for m in members}
-
-    return list(dedup.values())
+    sangiin_members = get_sangiin_members()
     members = shugiin_members + sangiin_members
 
     members = sorted(
