@@ -1,0 +1,120 @@
+{
+  "generated_at": "2026-04-23T15:30:00",
+  "summary": {
+    "generated_at": "2026-04-23T15:30:00",
+    "total_members": 713,
+    "with_site": 310,
+    "https_count": 302,
+    "gs_count": 84,
+    "gs_legislator_count": 61,
+    "site_seal_count": 19,
+    "gs_share_all_members": 8.6,
+    "gs_share_sites_only": 19.7,
+    "site_seal_share_sites_only": 6.1,
+    "by_party": [
+      {
+        "party": "自由民主党",
+        "total": 250,
+        "with_site": 120,
+        "gs_leg": 30,
+        "gs": 38,
+        "seal": 7
+      },
+      {
+        "party": "立憲民主党",
+        "total": 150,
+        "with_site": 70,
+        "gs_leg": 10,
+        "gs": 12,
+        "seal": 3
+      },
+      {
+        "party": "日本維新の会",
+        "total": 60,
+        "with_site": 35,
+        "gs_leg": 7,
+        "gs": 8,
+        "seal": 2
+      },
+      {
+        "party": "公明党",
+        "total": 40,
+        "with_site": 20,
+        "gs_leg": 5,
+        "gs": 6,
+        "seal": 1
+      },
+      {
+        "party": "国民民主党",
+        "total": 35,
+        "with_site": 18,
+        "gs_leg": 4,
+        "gs": 4,
+        "seal": 1
+      }
+    ]
+  },
+  "results": [
+    {
+      "chamber": "衆議院",
+      "name": "山田太郎",
+      "party": "自由民主党",
+      "official_url": "https://example.jp",
+      "source_url": "https://ja.wikipedia.org/wiki/山田太郎",
+      "final_url": "https://example.jp",
+      "status": "ok",
+      "http_status": 200,
+      "cert_subject_cn": "example.jp",
+      "cert_subject_o": "自由民主党",
+      "cert_issuer_o": "GMO GlobalSign, Inc.",
+      "cert_issuer_cn": "GlobalSign RSA OV SSL CA 2018",
+      "is_https": true,
+      "is_gs": true,
+      "is_gs_legislator_cert": true,
+      "site_seal_found": true,
+      "notes": []
+    },
+    {
+      "chamber": "参議院",
+      "name": "鈴木花子",
+      "party": "立憲民主党",
+      "official_url": "https://sample.jp",
+      "source_url": "https://ja.wikipedia.org/wiki/鈴木花子",
+      "final_url": "https://sample.jp",
+      "status": "ok",
+      "http_status": 200,
+      "cert_subject_cn": "sample.jp",
+      "cert_subject_o": "株式会社サンプル",
+      "cert_issuer_o": "Let's Encrypt",
+      "cert_issuer_cn": "R10",
+      "is_https": true,
+      "is_gs": false,
+      "is_gs_legislator_cert": false,
+      "site_seal_found": false,
+      "notes": [
+        "GS議員用には非該当"
+      ]
+    },
+    {
+      "chamber": "衆議院",
+      "name": "佐藤次郎",
+      "party": "無所属",
+      "official_url": null,
+      "source_url": "https://ja.wikipedia.org/wiki/佐藤次郎",
+      "final_url": null,
+      "status": "site_not_found",
+      "http_status": null,
+      "cert_subject_cn": null,
+      "cert_subject_o": null,
+      "cert_issuer_o": null,
+      "cert_issuer_cn": null,
+      "is_https": false,
+      "is_gs": false,
+      "is_gs_legislator_cert": false,
+      "site_seal_found": false,
+      "notes": [
+        "公式サイトURLを取得できませんでした"
+      ]
+    }
+  ]
+}
