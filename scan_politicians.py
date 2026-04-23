@@ -562,8 +562,7 @@ def summarize(results: List[ScanResult]) -> dict:
 
 def main() -> None:
     shugiin_members = get_shugiin_members()
-    sangiin_members = get_sangiin_members()
-    def get_sangiin_members() -> List[Member]:
+def get_sangiin_members() -> List[Member]:
 
     url = "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm"
 
