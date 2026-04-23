@@ -3,25 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dai Surf Premium Dashboard</title>
+  <title>Pererenan Surf Forecast Pro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #07111f;
-      --panel: rgba(10, 26, 44, 0.72);
-      --panel-strong: rgba(13, 35, 58, 0.92);
+      --bg1: #04101d;
+      --bg2: #0a2238;
+      --panel: rgba(10, 25, 42, 0.82);
+      --panel-soft: rgba(255,255,255,0.04);
       --line: rgba(255,255,255,0.08);
-      --text: #eaf6ff;
-      --muted: #91abc0;
-      --accent: #4fd1ff;
-      --accent-2: #7b61ff;
+      --text: #ecf7ff;
+      --muted: #96b3c8;
+      --accent: #56d6ff;
+      --accent2: #3b82f6;
       --good: #23d18b;
       --warn: #ffc857;
       --danger: #ff6b6b;
-      --shadow: 0 20px 50px rgba(0,0,0,0.35);
-      --radius: 22px;
+      --radius: 24px;
+      --shadow: 0 24px 60px rgba(0,0,0,.28);
     }
 
     * { box-sizing: border-box; }
@@ -31,145 +32,131 @@
       font-family: 'Inter', Arial, sans-serif;
       color: var(--text);
       background:
-        radial-gradient(circle at 10% 20%, rgba(79,209,255,0.18), transparent 28%),
-        radial-gradient(circle at 85% 15%, rgba(123,97,255,0.18), transparent 24%),
-        linear-gradient(180deg, #081220 0%, #09192c 38%, #06111d 100%);
+        radial-gradient(circle at 10% 15%, rgba(86,214,255,.15), transparent 24%),
+        radial-gradient(circle at 90% 10%, rgba(59,130,246,.16), transparent 20%),
+        linear-gradient(180deg, var(--bg2), var(--bg1));
       min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 36px 36px;
-      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent 88%);
     }
 
     .app {
-      width: min(1440px, calc(100% - 32px));
-      margin: 22px auto 32px;
+      width: min(1440px, calc(100% - 28px));
+      margin: 18px auto 30px;
     }
 
     .topbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 18px;
-      padding: 18px 22px;
-      background: rgba(6, 17, 31, 0.45);
+      gap: 14px;
+      flex-wrap: wrap;
+      padding: 16px 18px;
+      background: rgba(6,16,28,.55);
       border: 1px solid var(--line);
       border-radius: 24px;
-      backdrop-filter: blur(14px);
       box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      margin-bottom: 18px;
     }
 
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .brand-badge {
-      width: 52px;
-      height: 52px;
-      display: grid;
-      place-items: center;
-      border-radius: 18px;
-      background: linear-gradient(135deg, rgba(79,209,255,0.28), rgba(123,97,255,0.24));
-      border: 1px solid rgba(255,255,255,0.1);
-      font-size: 24px;
-    }
-
-    .brand h1 {
+    .title h1 {
       margin: 0;
-      font-size: clamp(20px, 2.6vw, 30px);
-      font-weight: 800;
-      letter-spacing: -0.04em;
+      font-size: clamp(22px, 4vw, 34px);
+      letter-spacing: -.04em;
     }
 
-    .brand p,
-    .mini-note,
-    .label,
-    .subtle {
-      margin: 0;
+    .title p {
+      margin: 6px 0 0;
       color: var(--muted);
+      font-size: 14px;
     }
 
     .top-actions {
       display: flex;
-      align-items: center;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
-      justify-content: flex-end;
+      align-items: center;
     }
 
-    .pill,
-    .btn {
-      border-radius: 999px;
+    .pill, .btn, .menu-btn {
       border: 1px solid var(--line);
-      background: rgba(255,255,255,0.04);
-      color: var(--text);
+      border-radius: 999px;
       padding: 10px 14px;
+      background: rgba(255,255,255,.05);
+      color: var(--text);
       font-weight: 600;
       font-size: 13px;
     }
 
-    .btn {
+    .btn, .menu-btn {
       cursor: pointer;
-      background: linear-gradient(135deg, rgba(79,209,255,0.22), rgba(123,97,255,0.22));
-      transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
-      box-shadow: 0 12px 24px rgba(0,0,0,0.18);
+      transition: .2s ease;
     }
 
-    .btn:hover {
+    .btn:hover, .menu-btn:hover {
       transform: translateY(-1px);
     }
 
-    .grid {
+    .btn.primary {
+      background: linear-gradient(135deg, rgba(86,214,255,.22), rgba(59,130,246,.22));
+    }
+
+    .layout {
       display: grid;
-      grid-template-columns: 1.5fr 1fr;
+      grid-template-columns: 1.4fr .9fr;
       gap: 18px;
     }
 
-    .left,
-    .right {
+    .col {
       display: grid;
       gap: 18px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      backdrop-filter: blur(14px);
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .card-head h2, .card-head h3 {
+      margin: 0;
+      letter-spacing: -.03em;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
     }
 
     .hero {
       position: relative;
       overflow: hidden;
-      background: linear-gradient(145deg, rgba(10,28,47,0.92), rgba(8,21,35,0.78));
-      border: 1px solid var(--line);
+      min-height: 410px;
+      padding: 26px;
       border-radius: 30px;
-      padding: 28px;
-      box-shadow: var(--shadow);
-      min-height: 380px;
-    }
-
-    .hero::after {
-      content: "";
-      position: absolute;
-      right: -10%;
-      top: -15%;
-      width: 320px;
-      height: 320px;
-      background: radial-gradient(circle, rgba(79,209,255,0.22), transparent 65%);
+      background: linear-gradient(145deg, rgba(8,24,40,.96), rgba(8,18,30,.78));
     }
 
     .hero-top {
-      position: relative;
-      z-index: 2;
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
       gap: 18px;
+      align-items: flex-start;
       flex-wrap: wrap;
+      position: relative;
+      z-index: 2;
     }
 
     .eyebrow {
@@ -178,278 +165,261 @@
       gap: 8px;
       padding: 8px 12px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
       font-size: 12px;
-      color: #cfeeff;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
+      color: #cff2ff;
     }
 
     .hero h2 {
       margin: 0;
-      font-size: clamp(30px, 5vw, 58px);
+      font-size: clamp(32px, 5vw, 58px);
       line-height: .95;
-      letter-spacing: -0.05em;
-      max-width: 560px;
+      letter-spacing: -.06em;
+      max-width: 620px;
     }
 
     .hero p {
       margin: 14px 0 0;
+      max-width: 650px;
       color: var(--muted);
-      max-width: 620px;
-      font-size: 15px;
       line-height: 1.7;
+      font-size: 15px;
     }
 
-    .score {
-      min-width: 160px;
-      padding: 18px 20px;
-      border-radius: 24px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      backdrop-filter: blur(10px);
+    .score-box {
+      min-width: 165px;
       text-align: center;
+      border-radius: 24px;
+      padding: 18px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
     }
 
-    .score .value {
-      font-size: 48px;
+    .score-box .label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .score-box .score {
+      font-size: 52px;
       font-weight: 800;
-      letter-spacing: -0.05em;
-      margin-top: 8px;
+      letter-spacing: -.06em;
+      margin-top: 6px;
     }
 
-    .ocean-stage {
+    .ocean {
       position: relative;
-      z-index: 1;
-      margin-top: 28px;
-      height: 210px;
+      margin-top: 24px;
+      height: 220px;
       border-radius: 28px;
       overflow: hidden;
-      background:
-        linear-gradient(180deg, rgba(122, 214, 255, 0.32) 0%, rgba(20, 84, 130, 0.58) 34%, rgba(5, 27, 45, 0.92) 100%),
-        linear-gradient(90deg, rgba(255,255,255,0.06), transparent);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(125,216,255,.28), rgba(7,53,90,.45) 35%, rgba(2,17,31,.94));
+      border: 1px solid rgba(255,255,255,.08);
     }
 
-    .sun-glow {
+    .sun {
       position: absolute;
-      width: 140px;
-      height: 140px;
+      width: 120px;
+      height: 120px;
+      right: 70px;
+      top: 30px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,218,117,0.95) 0%, rgba(255,218,117,0.3) 35%, transparent 70%);
-      top: 26px;
-      right: 80px;
-      filter: blur(6px);
-      opacity: .9;
+      background: radial-gradient(circle, rgba(255,218,117,.95), rgba(255,218,117,.25) 38%, transparent 70%);
+      filter: blur(4px);
     }
 
-    .wave-back,
-    .wave-mid,
-    .wave-front {
+    .wave-back, .wave-mid, .wave-front {
       position: absolute;
-      width: 220%;
-      left: -50%;
+      left: -45%;
+      width: 210%;
       bottom: 0;
       border-radius: 42%;
     }
 
     .wave-back {
-      height: 92px;
-      background: rgba(151, 228, 255, 0.22);
-      animation: drift 15s linear infinite;
-      bottom: 72px;
+      height: 84px;
+      bottom: 80px;
+      background: rgba(177,234,255,.18);
+      animation: drift 16s linear infinite;
     }
 
     .wave-mid {
-      height: 118px;
-      background: rgba(92, 205, 255, 0.34);
-      animation: drift 11s linear infinite reverse;
-      bottom: 32px;
+      height: 110px;
+      bottom: 36px;
+      background: rgba(111,214,255,.28);
+      animation: drift 12s linear infinite reverse;
     }
 
     .wave-front {
-      height: var(--wave-height, 132px);
-      background: linear-gradient(180deg, rgba(130, 231, 255, 0.74), rgba(15, 118, 173, 0.9));
-      animation: drift 8.5s linear infinite;
-      box-shadow: inset 0 14px 18px rgba(255,255,255,0.14);
+      height: var(--wave-h, 130px);
+      background: linear-gradient(180deg, rgba(140,230,255,.72), rgba(14,120,174,.95));
+      box-shadow: inset 0 12px 16px rgba(255,255,255,.18);
+      animation: drift 8s linear infinite;
     }
 
     .foam {
       position: absolute;
       left: 0;
       right: 0;
-      bottom: calc(var(--wave-height, 132px) - 10px);
-      height: 18px;
-      background: linear-gradient(90deg, rgba(255,255,255,.0), rgba(255,255,255,.72), rgba(255,255,255,.0));
+      bottom: calc(var(--wave-h, 130px) - 12px);
+      height: 16px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent);
       filter: blur(2px);
-      opacity: .75;
       animation: shimmer 3s ease-in-out infinite;
     }
 
     .surfer {
       position: absolute;
       left: var(--surfer-x, 58%);
-      bottom: calc(var(--wave-height, 132px) - 28px);
-      width: 60px;
-      height: 60px;
+      bottom: calc(var(--wave-h, 130px) - 30px);
+      width: 62px;
+      height: 62px;
       transform: translateX(-50%) rotate(-10deg);
-      transition: left .5s ease, bottom .5s ease;
     }
 
     .surfer::before {
-      content: "";
+      content: '';
       position: absolute;
+      left: 10px;
       bottom: 0;
-      left: 12px;
-      width: 42px;
+      width: 44px;
       height: 10px;
       border-radius: 999px;
-      background: #f7f7f7;
-      box-shadow: 0 0 18px rgba(255,255,255,0.3);
+      background: white;
+      box-shadow: 0 0 16px rgba(255,255,255,.26);
     }
 
     .surfer::after {
-      content: "";
+      content: '';
       position: absolute;
       left: 28px;
-      bottom: 9px;
+      bottom: 8px;
       width: 8px;
       height: 34px;
+      background: #0c1117;
       border-radius: 999px;
-      background: #09111a;
-      box-shadow: -10px 10px 0 0 #09111a, 8px 12px 0 0 #09111a, 6px -8px 0 0 #09111a;
+      box-shadow: -10px 10px 0 #0c1117, 8px 12px 0 #0c1117, 7px -8px 0 #0c1117;
     }
 
     .hero-stats {
-      position: relative;
-      z-index: 2;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       margin-top: 18px;
     }
 
-    .stat-tile,
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
+    .stat {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.06);
     }
 
-    .stat-tile {
-      padding: 16px 18px;
-    }
-
-    .stat-tile .k {
-      font-size: 12px;
+    .stat .k {
       color: var(--muted);
+      font-size: 12px;
       margin-bottom: 8px;
     }
 
-    .stat-tile .v {
+    .stat .v {
       font-size: 24px;
       font-weight: 800;
-      letter-spacing: -0.04em;
+      letter-spacing: -.04em;
     }
 
-    .card {
-      padding: 22px;
-    }
-
-    .card-head {
+    .board-menu {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 18px;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
     }
 
-    .card h3 {
-      margin: 0;
-      font-size: 19px;
-      letter-spacing: -0.03em;
-    }
-
-    .card .meta {
-      color: var(--muted);
-      font-size: 13px;
+    .menu-btn.active {
+      background: linear-gradient(135deg, rgba(86,214,255,.22), rgba(59,130,246,.22));
+      border-color: rgba(86,214,255,.28);
     }
 
     .forecast-grid {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 12px;
     }
 
-    .forecast-item {
-      padding: 14px 12px;
+    .time-card {
+      padding: 16px 12px;
       border-radius: 18px;
-      background: rgba(255,255,255,0.035);
-      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
       text-align: center;
     }
 
-    .forecast-item.active {
-      background: linear-gradient(180deg, rgba(79,209,255,0.18), rgba(123,97,255,0.14));
-      border-color: rgba(79,209,255,0.35);
+    .time-card.best {
+      background: linear-gradient(180deg, rgba(86,214,255,.18), rgba(59,130,246,.12));
+      border-color: rgba(86,214,255,.34);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
     }
 
-    .forecast-item .time {
+    .time-card .t {
       color: var(--muted);
       font-size: 12px;
       margin-bottom: 10px;
     }
 
-    .forecast-item .height {
-      font-size: 22px;
+    .time-card .size {
+      font-size: 24px;
       font-weight: 800;
+      letter-spacing: -.04em;
       margin-bottom: 6px;
     }
 
-    .forecast-item .desc {
-      font-size: 12px;
-      color: var(--muted);
+    .time-card .quality {
+      font-size: 13px;
+      margin-bottom: 6px;
     }
 
-    .board-list {
+    .time-card .wind {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .board-reco {
       display: grid;
       gap: 12px;
     }
 
-    .board-item {
+    .board-reco-item {
       display: grid;
       grid-template-columns: auto 1fr auto;
-      align-items: center;
       gap: 14px;
+      align-items: center;
       padding: 14px;
       border-radius: 18px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
     }
 
-    .board-icon {
+    .icon {
       width: 42px;
       height: 42px;
-      border-radius: 14px;
       display: grid;
       place-items: center;
-      background: linear-gradient(135deg, rgba(79,209,255,0.22), rgba(123,97,255,0.2));
-      font-size: 18px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(86,214,255,.22), rgba(59,130,246,.2));
     }
 
-    .board-item strong {
+    .board-reco-item strong {
       display: block;
-      font-size: 15px;
       margin-bottom: 4px;
+      font-size: 15px;
     }
 
-    .board-item p {
+    .board-reco-item p {
       margin: 0;
       color: var(--muted);
       font-size: 13px;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .tag {
@@ -457,176 +427,108 @@
       border-radius: 999px;
       font-size: 12px;
       font-weight: 700;
-      border: 1px solid rgba(255,255,255,0.06);
       white-space: nowrap;
+      border: 1px solid rgba(255,255,255,.06);
     }
 
-    .tag.good { background: rgba(35,209,139,0.14); color: #8ff0c3; }
-    .tag.warn { background: rgba(255,200,87,0.12); color: #ffe39a; }
-    .tag.info { background: rgba(79,209,255,0.14); color: #a6e8ff; }
+    .tag.good { background: rgba(35,209,139,.14); color: #8bf0c1; }
+    .tag.info { background: rgba(86,214,255,.14); color: #a8ecff; }
+    .tag.warn { background: rgba(255,200,87,.12); color: #ffe39f; }
 
-    .conditions {
+    .detail-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 12px;
     }
 
-    .condition-box {
+    .detail {
       padding: 16px;
       border-radius: 18px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
     }
 
-    .condition-box .t {
+    .detail .k {
       color: var(--muted);
       font-size: 12px;
       margin-bottom: 8px;
     }
 
-    .condition-box .n {
-      font-size: 26px;
+    .detail .v {
+      font-size: 28px;
       font-weight: 800;
-      letter-spacing: -0.04em;
+      letter-spacing: -.04em;
     }
 
-    .condition-box .s {
-      margin-top: 6px;
+    .detail .s {
       color: var(--muted);
       font-size: 13px;
-    }
-
-    .meter {
-      margin-top: 14px;
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.06);
-      overflow: hidden;
-    }
-
-    .meter > span {
-      display: block;
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, #4fd1ff, #7b61ff);
-    }
-
-    .tide-rows {
-      display: grid;
-      gap: 10px;
-    }
-
-    .tide-row {
-      display: grid;
-      grid-template-columns: 64px 1fr auto;
-      align-items: center;
-      gap: 12px;
-      font-size: 14px;
+      margin-top: 6px;
     }
 
     .bar {
       height: 10px;
-      background: rgba(255,255,255,0.06);
+      background: rgba(255,255,255,.06);
       border-radius: 999px;
       overflow: hidden;
+      margin-top: 14px;
     }
 
     .bar span {
       display: block;
       height: 100%;
       border-radius: inherit;
-      background: linear-gradient(90deg, rgba(79,209,255,0.92), rgba(123,97,255,0.85));
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
     }
 
-    .session {
-      display: grid;
-      gap: 14px;
-    }
+    .session-list { display: grid; gap: 12px; }
 
     .session-item {
       padding: 16px;
       border-radius: 18px;
-      border: 1px solid rgba(255,255,255,0.06);
-      background: rgba(255,255,255,0.04);
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
     }
 
     .session-item strong {
       display: flex;
       justify-content: space-between;
       gap: 12px;
-      font-size: 15px;
       margin-bottom: 8px;
+      font-size: 15px;
     }
 
     .session-item p {
       margin: 0;
       color: var(--muted);
-      font-size: 13px;
       line-height: 1.6;
+      font-size: 13px;
     }
 
-    .spot-map {
-      position: relative;
-      min-height: 220px;
-      overflow: hidden;
-      border-radius: 22px;
-      background:
-        linear-gradient(135deg, rgba(9, 44, 73, 0.9), rgba(9, 25, 43, 0.86)),
-        repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 32px),
-        repeating-linear-gradient(rgba(255,255,255,0.04) 0 1px, transparent 1px 32px);
-      border: 1px solid rgba(255,255,255,0.06);
+    .owned-board-card {
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
     }
 
-    .shoreline {
-      position: absolute;
-      right: -40px;
-      top: -10px;
-      width: 240px;
-      height: 300px;
-      background: linear-gradient(180deg, #d1b483, #a88455);
-      border-radius: 55% 0 0 55%;
-      transform: rotate(6deg);
-      box-shadow: inset 0 0 20px rgba(0,0,0,0.12);
+    .owned-board-card strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 6px;
     }
 
-    .reef {
-      position: absolute;
-      border-radius: 50%;
-      background: rgba(30, 82, 120, 0.55);
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .marker {
-      position: absolute;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 999px;
-      background: rgba(6, 17, 31, 0.76);
-      border: 1px solid rgba(255,255,255,0.08);
-      backdrop-filter: blur(10px);
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #4fd1ff;
-      box-shadow: 0 0 0 6px rgba(79,209,255,0.15);
-    }
-
-    .premium-footer {
-      margin-top: 18px;
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
+    .owned-board-card p {
+      margin: 0;
       color: var(--muted);
-      font-size: 12px;
-      padding: 0 6px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .spot-note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
     }
 
     @keyframes drift {
@@ -635,100 +537,91 @@
     }
 
     @keyframes shimmer {
-      0%,100% { opacity: .35; transform: translateX(-10px); }
-      50% { opacity: .9; transform: translateX(10px); }
+      0%,100% { opacity: .35; transform: translateX(-12px); }
+      50% { opacity: .95; transform: translateX(12px); }
     }
 
     @media (max-width: 1100px) {
-      .grid { grid-template-columns: 1fr; }
+      .layout { grid-template-columns: 1fr; }
       .hero-stats { grid-template-columns: repeat(2, 1fr); }
-      .forecast-grid { grid-template-columns: repeat(3, 1fr); }
     }
 
-    @media (max-width: 720px) {
-      .app { width: min(100% - 20px, 1440px); }
-      .topbar, .hero, .card { padding: 18px; }
-      .hero h2 { font-size: 34px; }
+    @media (max-width: 760px) {
+      .app { width: min(100% - 16px, 1440px); }
+      .card, .hero { padding: 18px; }
       .forecast-grid { grid-template-columns: repeat(2, 1fr); }
-      .hero-stats, .conditions { grid-template-columns: 1fr; }
-      .board-item { grid-template-columns: auto 1fr; }
-      .board-item .tag { grid-column: 1 / -1; justify-self: start; }
-      .tide-row { grid-template-columns: 54px 1fr auto; }
+      .hero-stats, .detail-grid { grid-template-columns: 1fr; }
+      .board-reco-item { grid-template-columns: auto 1fr; }
+      .board-reco-item .tag { grid-column: 1 / -1; justify-self: start; }
     }
   </style>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
-      <div class="brand">
-        <div class="brand-badge">🏄</div>
-        <div>
-          <h1>Dai Surf Premium Dashboard</h1>
-          <p>Pererenan / Bali ・ セッション判断を一画面で</p>
-        </div>
+      <div class="title">
+        <h1>Pererenan Surf Forecast Pro</h1>
+        <p>持っている板から選べる・時間帯ごとの波質・ベスト時間帯・おすすめボード提案</p>
       </div>
       <div class="top-actions">
         <div class="pill" id="lastUpdated">Last update --:--</div>
-        <div class="pill" id="liveStatus">● Live demo mode</div>
-        <button class="btn" id="refreshBtn">最新コンディションに更新</button>
+        <div class="pill" id="bestTimePill">Best time --</div>
+        <button class="btn primary" id="refreshBtn">コンディション更新</button>
       </div>
     </header>
 
-    <main class="grid">
-      <section class="left">
-        <div class="hero">
+    <main class="layout">
+      <section class="col">
+        <div class="card hero">
           <div class="hero-top">
             <div>
-              <div class="eyebrow">PREMIUM FORECAST ・ PERERENAN MAIN PEAK</div>
-              <h2 id="headline">胸〜肩 / クリーンで走れる波</h2>
-              <p id="summary">
-                朝はオフ寄りで面が整いやすく、ミドル〜インサイドでつなげやすいコンディション。
-                混雑が強まる前の早い時間がベターです。
-              </p>
+              <div class="eyebrow">PERERENAN ・ PREMIUM VIEW</div>
+              <h2 id="headline">胸〜肩 / 朝が良い</h2>
+              <p id="summary">朝は面が整い、ミドルからインサイドまでつなぎやすいコンディション。混雑前の時間帯が狙い目です。</p>
             </div>
-            <div class="score">
+            <div class="score-box">
               <div class="label">Surf Score</div>
-              <div class="value" id="scoreValue">82</div>
-              <div class="mini-note" id="scoreLabel">Good Session</div>
+              <div class="score" id="score">82</div>
+              <div class="meta" id="scoreLabel">Good Session</div>
             </div>
           </div>
 
-          <div class="ocean-stage" id="oceanStage">
-            <div class="sun-glow"></div>
+          <div class="ocean" id="ocean">
+            <div class="sun"></div>
             <div class="wave-back"></div>
             <div class="wave-mid"></div>
             <div class="foam"></div>
-            <div class="wave-front" id="waveFront"></div>
-            <div class="surfer" id="surfer"></div>
+            <div class="wave-front"></div>
+            <div class="surfer"></div>
           </div>
 
           <div class="hero-stats">
-            <div class="stat-tile">
-              <div class="k">Wave Size</div>
-              <div class="v" id="waveSize">4.1 ft</div>
-            </div>
-            <div class="stat-tile">
-              <div class="k">Wind</div>
-              <div class="v" id="windValue">4 kts</div>
-            </div>
-            <div class="stat-tile">
-              <div class="k">Primary Swell</div>
-              <div class="v" id="swellValue">2.1 m</div>
-            </div>
-            <div class="stat-tile">
-              <div class="k">Crowd</div>
-              <div class="v" id="crowdValue">Medium</div>
-            </div>
+            <div class="stat"><div class="k">サイズ</div><div class="v" id="waveSize">4.1 ft</div></div>
+            <div class="stat"><div class="k">風</div><div class="v" id="wind">4 kts</div></div>
+            <div class="stat"><div class="k">うねり</div><div class="v" id="swell">2.1 m</div></div>
+            <div class="stat"><div class="k">波質</div><div class="v" id="overallQuality">A-</div></div>
           </div>
         </div>
 
         <div class="card">
           <div class="card-head">
             <div>
-              <h3>時間別コンディション</h3>
-              <div class="meta">波の強さ・風・乗りやすさを一覧表示</div>
+              <h3>あなたのサーフボード</h3>
+              <div class="meta">メニューから選ぶと、提案ロジックの優先度に反映</div>
             </div>
-            <div class="pill">Next 18 hours</div>
+            <div class="pill">Owned Boards</div>
+          </div>
+          <div class="board-menu" id="boardMenu"></div>
+          <div class="owned-board-card" id="selectedBoardInfo"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>時間帯ごとの波質</h3>
+              <div class="meta">時間帯によるサイズ・波質・風向き・おすすめ度</div>
+            </div>
+            <div class="pill">Wave by time</div>
           </div>
           <div class="forecast-grid" id="forecastGrid"></div>
         </div>
@@ -736,340 +629,367 @@
         <div class="card">
           <div class="card-head">
             <div>
-              <h3>おすすめボード</h3>
-              <div class="meta">今のサイズ感と面に合わせたクイーバー提案</div>
+              <h3>波に応じたボード提案</h3>
+              <div class="meta">今のサイズと波質に対して、持っている板から提案</div>
             </div>
-            <div class="pill" id="boardFocus">Current call</div>
+            <div class="pill" id="currentCall">Current call</div>
           </div>
-          <div class="board-list" id="boardList"></div>
+          <div class="board-reco" id="boardReco"></div>
         </div>
       </section>
 
-      <aside class="right">
+      <aside class="col">
         <div class="card">
           <div class="card-head">
             <div>
               <h3>コンディション詳細</h3>
-              <div class="meta">風・うねり・乗りやすさ</div>
+              <div class="meta">風向き・周期・安定感・全体評価</div>
             </div>
             <div class="pill" id="qualityBadge">Quality</div>
           </div>
-          <div class="conditions">
-            <div class="condition-box">
-              <div class="t">Wind Direction</div>
-              <div class="n" id="windDir">ENE</div>
+          <div class="detail-grid">
+            <div class="detail">
+              <div class="k">風向き</div>
+              <div class="v" id="windDir">ENE</div>
               <div class="s" id="windNote">軽いオフショア</div>
             </div>
-            <div class="condition-box">
-              <div class="t">Wave Quality</div>
-              <div class="n" id="qualityValue">A-</div>
-              <div class="s" id="qualityNote">面が整って走りやすい</div>
+            <div class="detail">
+              <div class="k">周期</div>
+              <div class="v" id="period">13s</div>
+              <div class="s">周期があるほどフェイスが続きやすい</div>
             </div>
-            <div class="condition-box">
-              <div class="t">Swell Period</div>
-              <div class="n" id="periodValue">13s</div>
-              <div class="s">周期がありフェイスが続きやすい</div>
+            <div class="detail">
+              <div class="k">コンシステンシー</div>
+              <div class="v" id="consistency">74%</div>
+              <div class="s">セットの入りやすさ</div>
             </div>
-            <div class="condition-box">
-              <div class="t">Consistency</div>
-              <div class="n" id="consistencyValue">74%</div>
-              <div class="s">セット間隔はやや長め</div>
+            <div class="detail">
+              <div class="k">ベスト時間帯</div>
+              <div class="v" id="bestWindow">6:00</div>
+              <div class="s" id="bestWindowNote">朝イチが最優先</div>
             </div>
           </div>
-
-          <div class="meter"><span id="qualityMeter" style="width:82%"></span></div>
+          <div class="bar"><span id="qualityBar" style="width:82%"></span></div>
         </div>
 
         <div class="card">
           <div class="card-head">
             <div>
-              <h3>タイドレンジ</h3>
-              <div class="meta">潮回りと入りどきの目安</div>
+              <h3>今日の入りどき</h3>
+              <div class="meta">迷った時の優先順位</div>
             </div>
-            <div class="pill" id="bestWindow">Best window</div>
+            <div class="pill">Session Plan</div>
           </div>
-          <div class="tide-rows" id="tideRows"></div>
+          <div class="session-list" id="sessionList"></div>
         </div>
 
         <div class="card">
           <div class="card-head">
             <div>
-              <h3>セッションプラン</h3>
-              <div class="meta">今日の狙いどころ</div>
+              <h3>Pererenanメモ</h3>
+              <div class="meta">その日の波選びに使う補足</div>
             </div>
-            <div class="pill">AI Coach</div>
+            <div class="pill">Spot notes</div>
           </div>
-          <div class="session" id="sessionList"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>スポットイメージ</h3>
-              <div class="meta">ピーク・チャネル・混雑帯の見え方</div>
-            </div>
-            <div class="pill">Visual map</div>
-          </div>
-          <div class="spot-map">
-            <div class="shoreline"></div>
-            <div class="reef" style="left: 16%; top: 32%; width: 88px; height: 48px;"></div>
-            <div class="reef" style="left: 34%; top: 58%; width: 120px; height: 58px;"></div>
-            <div class="reef" style="left: 56%; top: 24%; width: 72px; height: 36px;"></div>
-
-            <div class="marker" style="left: 14%; top: 22%;"><span class="dot"></span> Main Peak</div>
-            <div class="marker" style="left: 28%; top: 66%;"><span class="dot"></span> Takeoff Zone</div>
-            <div class="marker" style="left: 58%; top: 48%;"><span class="dot"></span> Channel</div>
-            <div class="marker" style="left: 61%; top: 18%;"><span class="dot"></span> Crowd Line</div>
-          </div>
+          <div class="spot-note" id="spotNote"></div>
         </div>
       </aside>
     </main>
-
-    <div class="premium-footer">
-      <div>Demo UI ready for premium upgrade: API連携、潮汐API、Surfline/SOLspot系の実データ差し込み前提で設計</div>
-      <div>Designed for mobile + desktop</div>
-    </div>
   </div>
 
   <script>
+    const ownedBoards = [
+      {
+        id: 'sampler',
+        name: 'Sampler 5\'7',
+        label: 'Sampler',
+        summary: '小さめ〜ミドルサイズで波数を取りたい日に強い。滑り出しが早く、厚めのセクションでもつなぎやすい。'
+      },
+      {
+        id: 'twohappy',
+        name: 'Two Happy 5\'9',
+        label: 'Two Happy',
+        summary: '胸〜肩以上で反応良く動かしたい時向き。フェイスが立つ波やクリーンな日で真価を出しやすい。'
+      },
+      {
+        id: 'happytraveler',
+        name: 'Happy Traveler 6\'0',
+        label: 'Happy Traveler',
+        summary: '取りやすさと動かしやすさのバランスが良い。混雑がある日やサイズに迷う日に頼れる一本。'
+      },
+      {
+        id: 'm23',
+        name: 'M23 6\'6',
+        label: 'M23',
+        summary: 'サイズがある日や押しのある波で安心感が高い。パドルの余裕を確保しながらしっかり走れる。'
+      }
+    ];
+
     const scenarios = [
       {
-        headline: '胸〜肩 / クリーンで走れる波',
-        summary: '朝はオフ寄りで面が整いやすく、ミドル〜インサイドでつなげやすいコンディション。混雑が強まる前の早い時間がベターです。',
+        headline: '胸〜肩 / 朝が良い',
+        summary: '朝は面が整い、ミドルからインサイドまでつなぎやすいコンディション。混雑前の時間帯が狙い目です。',
         score: 82,
         scoreLabel: 'Good Session',
-        waveFt: '4.1 ft',
+        waveSize: '4.1 ft',
         wind: '4 kts',
         swell: '2.1 m',
-        crowd: 'Medium',
-        waveHeightPx: '126px',
-        surferX: '58%',
-        quality: 'A-',
-        qualityNote: '面が整って走りやすい',
+        overallQuality: 'A-',
         windDir: 'ENE',
         windNote: '軽いオフショア',
         period: '13s',
         consistency: '74%',
-        qualityMeter: 82,
+        bestTime: '6:00 - 8:30',
+        bestTimeShort: '6:00',
+        bestTimeNote: '朝イチが最優先',
         qualityBadge: 'Clean faces',
-        bestWindow: '6:00 - 8:30',
-        boardFocus: 'Performance + paddle',
-        forecast: [
-          ['06:00', '3.8ft', 'クリーン', true],
-          ['09:00', '4.1ft', 'ベスト'],
-          ['12:00', '4.4ft', '少し混雑'],
-          ['15:00', '4.0ft', '風入り気味'],
-          ['18:00', '3.6ft', '夕方まとまる'],
-          ['21:00', '3.2ft', 'ナイト参考']
+        qualityBar: 82,
+        waveHeightPx: '128px',
+        surferX: '58%',
+        spotNote: '朝は比較的フェイスが整い、混雑前に乗りやすい波を取りやすい日。昼前からは人が増えやすいので、ポジションを少しずらして待つのが有効。',
+        timeBands: [
+          { time: '早朝', size: '胸', quality: '◎ クリーン', wind: 'オフ', best: true },
+          { time: '朝', size: '胸〜肩', quality: '○ 良い', wind: 'オフ', best: true },
+          { time: '昼前', size: '肩', quality: '○ 走れる', wind: '弱サイド', best: false },
+          { time: '昼', size: '肩', quality: '△ 混雑', wind: 'ややオン', best: false },
+          { time: '夕方', size: '胸', quality: '○ まとまる', wind: '弱め', best: false }
         ],
-        boards: [
-          ['⚡', 'Two Happy', '胸〜肩でスピードと反応を出しやすい。面が整っている時の第一候補。', 'Best', 'good'],
-          ['🏄', 'Happy Traveler', '少し混んでいても早めに乗れて、フェイスで余裕を作りやすい。', 'Easy entry', 'info'],
-          ['🌊', 'Sampler', '波数優先ならあり。小さめや厚めのセクションでも滑り出しが早い。', 'Backup', 'warn']
-        ],
-        tides: [
-          ['05:30', 26, 'Low'],
-          ['08:30', 72, 'Rising'],
-          ['12:10', 94, 'High'],
-          ['16:20', 44, 'Dropping']
+        boardRankings: [
+          { id: 'twohappy', tag: 'ベスト', tagClass: 'good', reason: '胸〜肩で面が整う時間帯に最も気持ちよく動かせる。' },
+          { id: 'happytraveler', tag: '安定', tagClass: 'info', reason: '混雑時でも早めに乗れて、全体を通して扱いやすい。' },
+          { id: 'sampler', tag: '予備', tagClass: 'warn', reason: 'サイズが落ちた夕方や厚めのセクションなら有効。' }
         ],
         sessions: [
-          ['朝イチ', '最優先', '面が整いやすく、人が増える前に2〜3本の良い波を狙いやすい。'],
-          ['昼前', 'セカンド', 'サイズは残るがピークの混雑が上がるので、ポジション取り重視。'],
-          ['夕方', '様子見', '風が落ちればチャンス。厚めならボリュームある板が楽。']
+          { name: '第1候補', tag: '朝イチ', note: '6:00〜8:30が最もバランス良く、良い波を取りやすい。' },
+          { name: '第2候補', tag: '昼前', note: 'サイズは残るが人が増えるので、ピークの外側も視野に。' },
+          { name: '第3候補', tag: '夕方', note: '風が落ちれば遊べる。サイズ重視なら期待しすぎない方が良い。' }
         ]
       },
       {
-        headline: '頭前後 / パワーあり、セット待ち長め',
-        summary: 'セットは厚みより押しがあり、テイクオフ後にしっかり加速できる日。ポジションが深すぎると刺さりやすいので注意。',
-        score: 88,
+        headline: '頭前後 / パワーあり',
+        summary: 'セットは押しがあり、しっかり加速できる日。深追いしすぎると刺さりやすいので、余裕あるテイクオフが重要です。',
+        score: 89,
         scoreLabel: 'Advanced Good',
-        waveFt: '5.8 ft',
+        waveSize: '5.8 ft',
         wind: '6 kts',
         swell: '2.7 m',
-        crowd: 'Low / Medium',
-        waveHeightPx: '154px',
-        surferX: '62%',
-        quality: 'A',
-        qualityNote: 'セットは力強く走れる',
+        overallQuality: 'A',
         windDir: 'E',
         windNote: 'サイドオフ寄り',
         period: '15s',
         consistency: '68%',
-        qualityMeter: 88,
+        bestTime: '7:00 - 9:00',
+        bestTimeShort: '7:00',
+        bestTimeNote: 'サイズを受け止めやすい時間',
         qualityBadge: 'Power swell',
-        bestWindow: '7:00 - 9:00',
-        boardFocus: 'Hold + confidence',
-        forecast: [
-          ['06:00', '5.3ft', '強いセット', true],
-          ['09:00', '5.8ft', 'ベスト'],
-          ['12:00', '6.0ft', 'ハード'],
-          ['15:00', '5.6ft', 'まだ強い'],
-          ['18:00', '5.1ft', '少し落ち着く'],
-          ['21:00', '4.6ft', '参考']
+        qualityBar: 89,
+        waveHeightPx: '154px',
+        surferX: '62%',
+        spotNote: 'サイズがある分、見た目より押しが強い日。無理にショートで攻めるより、余裕のある板で本数をまとめた方が満足度が高い。',
+        timeBands: [
+          { time: '早朝', size: '肩〜頭', quality: '○ 走れる', wind: 'オフ', best: false },
+          { time: '朝', size: '頭', quality: '◎ ベスト', wind: 'サイドオフ', best: true },
+          { time: '昼前', size: '頭+', quality: '○ パワー', wind: '弱サイド', best: false },
+          { time: '昼', size: '頭+', quality: '△ ハード', wind: 'ややオン', best: false },
+          { time: '夕方', size: '肩〜頭', quality: '○ 少し落ち着く', wind: '弱め', best: true }
         ],
-        boards: [
-          ['🌊', 'M23', '押しの強い波でもテイクオフの安心感が高く、サイズがある日に最有力。', 'Top pick', 'good'],
-          ['⚡', 'Happy Traveler', 'サイズが落ち着く時間帯なら動かしやすさと取り回しのバランスが良い。', 'Balanced', 'info'],
-          ['🏄', 'Two Happy', '自信があるなら可。テイクオフ位置と波選びがシビアになりやすい。', 'Expert only', 'warn']
-        ],
-        tides: [
-          ['05:10', 18, 'Low'],
-          ['08:10', 61, 'Rising'],
-          ['11:50', 98, 'High'],
-          ['16:40', 38, 'Dropping']
+        boardRankings: [
+          { id: 'm23', tag: '最有力', tagClass: 'good', reason: 'サイズがある日に最も安心感があり、余裕を持って入れる。' },
+          { id: 'happytraveler', tag: '次点', tagClass: 'info', reason: '少し落ち着く時間帯なら十分楽しめる。' },
+          { id: 'twohappy', tag: '上級者向け', tagClass: 'warn', reason: 'ハマれば気持ち良いが、取りやすさは落ちる。' }
         ],
         sessions: [
-          ['朝イチ', 'ベスト', '混雑がまだ薄く、セットを見極めやすい。落ち着いてアウトから選ぶ日。'],
-          ['ミドル', '注意', 'サイズに対して人が増えると危険度が上がる。無理な深追いは避ける。'],
-          ['夕方', '狙い目', '少しサイズが落ちればM23やHappy Travelerで楽しみやすい。']
+          { name: '第1候補', tag: '朝', note: '7:00〜9:00が最もまとまりやすく、サイズにも慣れやすい。' },
+          { name: '第2候補', tag: '夕方', note: '少しサイズが落ちれば入りやすくなる。' },
+          { name: '注意', tag: '昼', note: '人が多いのにサイズも残ると危険度が上がる。無理しない。' }
         ]
       },
       {
-        headline: '腰〜腹 / ロングライドより本数重視',
-        summary: 'サイズは控えめで、厚いセクションをつないで遊ぶイメージ。波数を取りたい日で、パドルの早さが効きます。',
+        headline: '腰〜腹 / 本数重視の日',
+        summary: 'サイズは控えめで、厚めのセクションをつないで遊ぶイメージ。波数を取りたいなら浮力が効きます。',
         score: 71,
         scoreLabel: 'Fun Small Day',
-        waveFt: '2.8 ft',
+        waveSize: '2.8 ft',
         wind: '7 kts',
         swell: '1.4 m',
-        crowd: 'High',
-        waveHeightPx: '94px',
-        surferX: '54%',
-        quality: 'B',
-        qualityNote: '遊べるが選ぶ必要あり',
+        overallQuality: 'B',
         windDir: 'SE',
         windNote: 'ややオン気味',
         period: '10s',
         consistency: '81%',
-        qualityMeter: 71,
+        bestTime: '6:30 - 7:30',
+        bestTimeShort: '6:30',
+        bestTimeNote: '風が入る前が良い',
         qualityBadge: 'Fun waves',
-        bestWindow: '6:30 - 7:30',
-        boardFocus: 'Volume wins',
-        forecast: [
-          ['06:00', '2.6ft', '小ぶり', true],
-          ['09:00', '2.8ft', '遊べる'],
-          ['12:00', '3.0ft', '厚め'],
-          ['15:00', '2.7ft', '風入り'],
-          ['18:00', '2.5ft', 'つなげれば○'],
-          ['21:00', '2.3ft', '参考']
+        qualityBar: 71,
+        waveHeightPx: '94px',
+        surferX: '54%',
+        spotNote: 'サイズがない分、板選びの差が出る日。短すぎる板より、少し余裕のある板で本数を増やす方が楽しみやすい。',
+        timeBands: [
+          { time: '早朝', size: '腰', quality: '○ 遊べる', wind: '弱オフ', best: true },
+          { time: '朝', size: '腰〜腹', quality: '○ つなげる', wind: '弱め', best: true },
+          { time: '昼前', size: '腹', quality: '△ 厚め', wind: 'ややオン', best: false },
+          { time: '昼', size: '腹', quality: '△ 風あり', wind: 'オン', best: false },
+          { time: '夕方', size: '腰〜腹', quality: '○ まあまあ', wind: '弱まる', best: false }
         ],
-        boards: [
-          ['🏄', 'Sampler', '小さめで厚い波に最も合いやすく、本数を取りたい日に強い。', 'Most fun', 'good'],
-          ['🌊', 'Happy Traveler', '十分あり。サイズが少し上がる時間帯なら走りやすい。', 'All-round', 'info'],
-          ['⚡', 'Two Happy', '乗れなくはないが、今日の優先度は低め。', 'Low priority', 'warn']
-        ],
-        tides: [
-          ['05:50', 34, 'Low'],
-          ['08:50', 66, 'Rising'],
-          ['12:30', 86, 'High'],
-          ['16:50', 52, 'Dropping']
+        boardRankings: [
+          { id: 'sampler', tag: '最適', tagClass: 'good', reason: '小さめで厚い波に一番合いやすく、本数も取りやすい。' },
+          { id: 'happytraveler', tag: '安定', tagClass: 'info', reason: 'サイズが少し上がる時間帯なら十分使いやすい。' },
+          { id: 'twohappy', tag: '優先低め', tagClass: 'warn', reason: '今日のサイズ感だとやや勿体ない。' }
         ],
         sessions: [
-          ['朝', '本数狙い', '人が増える前にピーク近くで早めに乗るのが有効。'],
-          ['昼', '板でカバー', '厚めになりやすいので、浮力ある板でつなぐ意識。'],
-          ['夕方', '軽く1ラウンド', '風が落ちれば遊べるが、無理に長く待たない方が満足度高め。']
+          { name: '第1候補', tag: '早朝', note: '風が弱いうちに本数をまとめるのがベスト。' },
+          { name: '第2候補', tag: '朝', note: '混雑が増える前ならまだ十分楽しめる。' },
+          { name: '第3候補', tag: '夕方', note: '風が落ちればもう一度遊べる可能性あり。' }
         ]
       }
     ];
 
-    const els = {
+    let selectedBoardId = ownedBoards[0].id;
+
+    const el = {
       headline: document.getElementById('headline'),
       summary: document.getElementById('summary'),
-      scoreValue: document.getElementById('scoreValue'),
+      score: document.getElementById('score'),
       scoreLabel: document.getElementById('scoreLabel'),
       waveSize: document.getElementById('waveSize'),
-      windValue: document.getElementById('windValue'),
-      swellValue: document.getElementById('swellValue'),
-      crowdValue: document.getElementById('crowdValue'),
+      wind: document.getElementById('wind'),
+      swell: document.getElementById('swell'),
+      overallQuality: document.getElementById('overallQuality'),
       windDir: document.getElementById('windDir'),
       windNote: document.getElementById('windNote'),
-      qualityValue: document.getElementById('qualityValue'),
-      qualityNote: document.getElementById('qualityNote'),
-      periodValue: document.getElementById('periodValue'),
-      consistencyValue: document.getElementById('consistencyValue'),
-      qualityMeter: document.getElementById('qualityMeter'),
-      qualityBadge: document.getElementById('qualityBadge'),
+      period: document.getElementById('period'),
+      consistency: document.getElementById('consistency'),
       bestWindow: document.getElementById('bestWindow'),
-      boardFocus: document.getElementById('boardFocus'),
+      bestWindowNote: document.getElementById('bestWindowNote'),
+      qualityBadge: document.getElementById('qualityBadge'),
+      qualityBar: document.getElementById('qualityBar'),
+      bestTimePill: document.getElementById('bestTimePill'),
       forecastGrid: document.getElementById('forecastGrid'),
-      boardList: document.getElementById('boardList'),
-      tideRows: document.getElementById('tideRows'),
+      boardReco: document.getElementById('boardReco'),
       sessionList: document.getElementById('sessionList'),
-      lastUpdated: document.getElementById('lastUpdated'),
-      oceanStage: document.getElementById('oceanStage')
+      spotNote: document.getElementById('spotNote'),
+      currentCall: document.getElementById('currentCall'),
+      boardMenu: document.getElementById('boardMenu'),
+      selectedBoardInfo: document.getElementById('selectedBoardInfo'),
+      ocean: document.getElementById('ocean'),
+      lastUpdated: document.getElementById('lastUpdated')
     };
 
-    function renderScenario(data) {
-      els.headline.textContent = data.headline;
-      els.summary.textContent = data.summary;
-      els.scoreValue.textContent = data.score;
-      els.scoreLabel.textContent = data.scoreLabel;
-      els.waveSize.textContent = data.waveFt;
-      els.windValue.textContent = data.wind;
-      els.swellValue.textContent = data.swell;
-      els.crowdValue.textContent = data.crowd;
-      els.windDir.textContent = data.windDir;
-      els.windNote.textContent = data.windNote;
-      els.qualityValue.textContent = data.quality;
-      els.qualityNote.textContent = data.qualityNote;
-      els.periodValue.textContent = data.period;
-      els.consistencyValue.textContent = data.consistency;
-      els.qualityMeter.style.width = data.qualityMeter + '%';
-      els.qualityBadge.textContent = data.qualityBadge;
-      els.bestWindow.textContent = 'Best: ' + data.bestWindow;
-      els.boardFocus.textContent = data.boardFocus;
+    function setBoardMenu() {
+      el.boardMenu.innerHTML = ownedBoards.map(board => `
+        <button class="menu-btn ${board.id === selectedBoardId ? 'active' : ''}" data-board="${board.id}">${board.label}</button>
+      `).join('');
 
-      els.oceanStage.style.setProperty('--wave-height', data.waveHeightPx);
-      els.oceanStage.style.setProperty('--surfer-x', data.surferX);
+      el.boardMenu.querySelectorAll('[data-board]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedBoardId = btn.dataset.board;
+          setBoardMenu();
+          renderBoardInfo();
+          renderScenario(currentScenario);
+        });
+      });
+    }
 
-      els.forecastGrid.innerHTML = data.forecast.map(([time, height, desc, active]) => `
-        <div class="forecast-item ${active ? 'active' : ''}">
-          <div class="time">${time}</div>
-          <div class="height">${height}</div>
-          <div class="desc">${desc}</div>
+    function renderBoardInfo() {
+      const board = ownedBoards.find(b => b.id === selectedBoardId);
+      el.selectedBoardInfo.innerHTML = `<strong>${board.name}</strong><p>${board.summary}</p>`;
+    }
+
+    function getRecommendedBoards(scenario) {
+      const preferred = scenario.boardRankings;
+      const visible = preferred.filter(item => ownedBoards.some(board => board.id === item.id));
+
+      visible.sort((a, b) => {
+        if (a.id === selectedBoardId) return -1;
+        if (b.id === selectedBoardId) return 1;
+        return 0;
+      });
+
+      return visible.map(item => {
+        const board = ownedBoards.find(b => b.id === item.id);
+        const highlight = item.id === selectedBoardId ? '今選択中の板' : item.tag;
+        const highlightClass = item.id === selectedBoardId ? 'info' : item.tagClass;
+        return {
+          name: board.name,
+          label: board.label,
+          reason: item.reason,
+          tag: highlight,
+          tagClass: highlightClass
+        };
+      });
+    }
+
+    function renderScenario(scenario) {
+      el.headline.textContent = scenario.headline;
+      el.summary.textContent = scenario.summary;
+      el.score.textContent = scenario.score;
+      el.scoreLabel.textContent = scenario.scoreLabel;
+      el.waveSize.textContent = scenario.waveSize;
+      el.wind.textContent = scenario.wind;
+      el.swell.textContent = scenario.swell;
+      el.overallQuality.textContent = scenario.overallQuality;
+      el.windDir.textContent = scenario.windDir;
+      el.windNote.textContent = scenario.windNote;
+      el.period.textContent = scenario.period;
+      el.consistency.textContent = scenario.consistency;
+      el.bestWindow.textContent = scenario.bestTimeShort;
+      el.bestWindowNote.textContent = scenario.bestTimeNote;
+      el.bestTimePill.textContent = `Best time ${scenario.bestTime}`;
+      el.qualityBadge.textContent = scenario.qualityBadge;
+      el.qualityBar.style.width = scenario.qualityBar + '%';
+      el.currentCall.textContent = `おすすめ基準: ${scenario.bestTime}`;
+      el.spotNote.textContent = scenario.spotNote;
+
+      el.ocean.style.setProperty('--wave-h', scenario.waveHeightPx);
+      el.ocean.style.setProperty('--surfer-x', scenario.surferX);
+
+      el.forecastGrid.innerHTML = scenario.timeBands.map(item => `
+        <div class="time-card ${item.best ? 'best' : ''}">
+          <div class="t">${item.time}</div>
+          <div class="size">${item.size}</div>
+          <div class="quality">${item.quality}</div>
+          <div class="wind">風: ${item.wind}</div>
         </div>
       `).join('');
 
-      els.boardList.innerHTML = data.boards.map(([icon, name, desc, tag, kind]) => `
-        <div class="board-item">
-          <div class="board-icon">${icon}</div>
+      const boards = getRecommendedBoards(scenario);
+      el.boardReco.innerHTML = boards.map((board, i) => `
+        <div class="board-reco-item">
+          <div class="icon">${i === 0 ? '🏄' : i === 1 ? '🌊' : '⚡'}</div>
           <div>
-            <strong>${name}</strong>
-            <p>${desc}</p>
+            <strong>${board.name}</strong>
+            <p>${board.reason}</p>
           </div>
-          <div class="tag ${kind}">${tag}</div>
+          <div class="tag ${board.tagClass}">${board.tag}</div>
         </div>
       `).join('');
 
-      els.tideRows.innerHTML = data.tides.map(([time, value, label]) => `
-        <div class="tide-row">
-          <div class="subtle">${time}</div>
-          <div class="bar"><span style="width:${value}%"></span></div>
-          <div>${label}</div>
-        </div>
-      `).join('');
-
-      els.sessionList.innerHTML = data.sessions.map(([name, badge, desc]) => `
+      el.sessionList.innerHTML = scenario.sessions.map(item => `
         <div class="session-item">
-          <strong><span>${name}</span><span class="tag info">${badge}</span></strong>
-          <p>${desc}</p>
+          <strong><span>${item.name}</span><span class="tag info">${item.tag}</span></strong>
+          <p>${item.note}</p>
         </div>
       `).join('');
 
       const now = new Date();
       const hh = String(now.getHours()).padStart(2, '0');
       const mm = String(now.getMinutes()).padStart(2, '0');
-      els.lastUpdated.textContent = `Last update ${hh}:${mm}`;
+      el.lastUpdated.textContent = `Last update ${hh}:${mm}`;
     }
 
-    function updateDashboard() {
-      const next = scenarios[Math.floor(Math.random() * scenarios.length)];
-      renderScenario(next);
+    let currentScenario = scenarios[0];
+
+    function randomizeScenario() {
+      currentScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+      renderScenario(currentScenario);
     }
 
-    document.getElementById('refreshBtn').addEventListener('click', updateDashboard);
-    renderScenario(scenarios[0]);
+    document.getElementById('refreshBtn').addEventListener('click', randomizeScenario);
+
+    setBoardMenu();
+    renderBoardInfo();
+    renderScenario(currentScenario);
   </script>
 </body>
 </html>
