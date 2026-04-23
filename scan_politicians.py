@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from __future__ import annotation
+from __future__ import annotations
 
 import concurrent.futures
 import datetime as dt
@@ -563,6 +563,89 @@ def summarize(results: List[ScanResult]) -> dict:
 def main() -> None:
     shugiin_members = get_shugiin_members()
     sangiin_members = get_sangiin_members()
+    def get_sangiin_members() -> List[Member]:
+
+    url = "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm"
+
+    html = get_text(url)
+
+    if not html:
+
+        return []
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    text = soup.get_text("\n")
+
+    party_map = {
+
+        "自民": "自由民主党",
+
+        "立憲": "立憲民主党",
+
+        "維新": "日本維新の会",
+
+        "公明": "公明党",
+
+        "民主": "国民民主党",
+
+        "参政": "参政党",
+
+        "共産": "日本共産党",
+
+        "れ新": "れいわ新選組",
+
+        "保守": "日本保守党",
+
+        "沖縄": "沖縄の風",
+
+        "みら": "チームみらい",
+
+        "社民": "社会民主党",
+
+        "無所属": "無所属",
+
+    }
+
+    members: List[Member] = []
+
+    pattern = re.compile(
+
+        r"([一-龥々〆ヵヶぁ-んァ-ンー ]{2,40})\s+"
+
+        r"([ぁ-んー ]{2,60})\s+"
+
+        r"(自民|立憲|維新|公明|民主|参政|共産|れ新|保守|沖縄|みら|社民|無所属)\s+"
+
+        r"(\S+)\s+"
+
+        r"(令和\d+年\d+月\d+日)"
+
+    )
+
+    for match in pattern.finditer(text):
+
+        name = clean_name(match.group(1))
+
+        party_abbr = match.group(3)
+
+        members.append(
+
+            Member(
+
+                chamber="参議院",
+
+                name=name,
+
+                party=party_map[party_abbr],
+
+            )
+
+        )
+
+    dedup = {(m.chamber, m.name): m for m in members}
+
+    return list(dedup.values())
     members = shugiin_members + sangiin_members
 
     members = sorted(
