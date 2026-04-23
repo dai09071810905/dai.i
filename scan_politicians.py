@@ -246,51 +246,95 @@ def get_shugiin_members() -> List[Member]:
 
 
 def get_sangiin_members() -> List[Member]:
+
     url = "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm"
+
     html = get_text(url)
+
     if not html:
+
         return []
 
     soup = BeautifulSoup(html, "html.parser")
-    lines = [re.sub(r"\s+", " ", line).strip() for line in soup.get_text("\n").splitlines()]
-    lines = [line for line in lines if line]
-
-    party_map = {
-        "自民": "自由民主党",
-        "立憲": "立憲民主党",
-        "維新": "日本維新の会",
-        "公明": "公明党",
-        "民主": "国民民主党",
-        "参政": "参政党",
-        "共産": "日本共産党",
-        "れ新": "れいわ新選組",
-        "保守": "日本保守党",
-        "沖縄": "沖縄の風",
-        "みら": "チームみらい",
-        "社民": "社会民主党",
-        "無所属": "無所属",
-    }
 
     members: List[Member] = []
 
-    for line in lines:
-        match = re.match(
-            r"^([一-龥々〆ヵヶぁ-んァ-ンー ]{2,40})\s+"
-            r"([ぁ-んー ]{2,60})\s+"
-            r"(自民|立憲|維新|公明|民主|参政|共産|れ新|保守|沖縄|みら|社民|無所属)\s+"
-            r"(\S+)\s+"
-            r"(令和\d+年\d+月\d+日)",
-            line,
-        )
-        if not match:
+    party_map = {
+
+        "自民": "自由民主党",
+
+        "立憲": "立憲民主党",
+
+        "維新": "日本維新の会",
+
+        "公明": "公明党",
+
+        "民主": "国民民主党",
+
+        "参政": "参政党",
+
+        "共産": "日本共産党",
+
+        "れ新": "れいわ新選組",
+
+        "保守": "日本保守党",
+
+        "沖縄": "沖縄の風",
+
+        "みら": "チームみらい",
+
+        "社民": "社会民主党",
+
+        "無所属": "無所属",
+
+    }
+
+    text = soup.get_text("\n")
+
+    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
+
+    lines = [line for line in lines if line]
+
+    for i in range(len(lines) - 4):
+
+        name = lines[i]
+
+        reading = lines[i + 1]
+
+        party_abbr = lines[i + 2]
+
+        district = lines[i + 3]
+
+        term = lines[i + 4]
+
+        if not is_person_name(name):
+
+            continue
+
+        if not re.fullmatch(r"[ぁ-んァ-ンー ]{2,60}", reading):
+
+            continue
+
+        if party_abbr not in party_map:
+
+            continue
+
+        if "令和" not in term:
+
             continue
 
         members.append(
+
             Member(
+
                 chamber="参議院",
-                name=clean_name(match.group(1)),
-                party=party_map[match.group(3)],
+
+                name=clean_name(name),
+
+                party=party_map[party_abbr],
+
             )
+
         )
 
     return list({(m.chamber, m.name): m for m in members}.values())
