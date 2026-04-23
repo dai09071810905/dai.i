@@ -2,73 +2,107 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Dai Surf Report</title>
+<title>Dai Surf Dashboard</title>
 
 <style>
 body {
   margin: 0;
   font-family: Arial;
-  background: #0a1f33;
+  background: #0b1e2d;
   color: white;
 }
 
 /* ヘッダー */
 .header {
   background: #0d3b66;
-  padding: 15px;
-  font-size: 22px;
+  padding: 15px 20px;
+  font-size: 20px;
   font-weight: bold;
 }
 
-/* カード */
+/* レイアウト */
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  padding: 15px;
+}
+
 .card {
-  background: #112f4a;
-  margin: 15px;
-  padding: 20px;
+  background: #132f4c;
+  padding: 15px;
   border-radius: 10px;
 }
 
-/* ボタン */
-button {
-  padding: 10px 20px;
-  background: #ffcc00;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
 /* 波グラフィック */
-.wave-box {
-  margin-top: 20px;
-  height: 120px;
+.ocean {
   position: relative;
+  height: 180px;
+  background: linear-gradient(#4facfe, #00f2fe);
   overflow: hidden;
+  border-radius: 10px;
 }
 
 .wave {
   position: absolute;
+  bottom: 0;
   width: 200%;
   background: rgba(255,255,255,0.5);
   border-radius: 40%;
+  animation: move 4s infinite linear;
 }
 
-.small { height: 40px; }
-.medium { height: 80px; }
-.big { height: 120px; }
+.surfer {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 15px;
+  height: 50px;
+  background: black;
+}
 
 @keyframes move {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
 
-/* グリッド */
-.grid {
+.small { height: 50px; }
+.medium { height: 100px; }
+.big { height: 160px; }
+
+/* ボタン */
+button {
+  margin-top: 10px;
+  padding: 8px 15px;
+  border: none;
+  background: #ffcc00;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* ステータス */
+.status {
   display: flex;
   justify-content: space-around;
   margin-top: 10px;
 }
 
-.item {
+.status div {
+  text-align: center;
+}
+
+/* 時間別 */
+.timeline {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.time-box {
+  background: #1d4f7a;
+  padding: 10px;
+  border-radius: 8px;
+  width: 30%;
   text-align: center;
 }
 </style>
@@ -76,73 +110,96 @@ button {
 
 <body>
 
-<div class="header">🏄 Dai Surf Report - Pererenan</div>
+<div class="header">🏄 Dai Surf Dashboard - Pererenan</div>
 
+<div class="container">
+
+<!-- 今日の波 -->
 <div class="card">
   <h2>今日の波</h2>
-  <button onclick="generate()">更新</button>
 
-  <div class="wave-box">
+  <div class="ocean">
     <div id="wave" class="wave"></div>
+    <div class="surfer"></div>
   </div>
 
   <p id="size"></p>
   <p id="comment"></p>
+
+  <button onclick="update()">更新</button>
 </div>
 
+<!-- コンディション -->
 <div class="card">
   <h2>コンディション</h2>
-  <div class="grid">
-    <div class="item">
-      🌬 風<br><span id="wind"></span>
-    </div>
-    <div class="item">
-      🌊 サイズ<br><span id="size2"></span>
-    </div>
-    <div class="item">
-      👍 評価<br><span id="rate"></span>
-    </div>
+  <div class="status">
+    <div>🌬<br><span id="wind"></span></div>
+    <div>👍<br><span id="rate"></span></div>
+    <div>🌊<br><span id="swell"></span></div>
   </div>
 </div>
 
+<!-- 時間別 -->
+<div class="card">
+  <h2>時間別</h2>
+  <div class="timeline">
+    <div class="time-box">朝<br>胸</div>
+    <div class="time-box">昼<br>肩</div>
+    <div class="time-box">夕<br>頭</div>
+  </div>
+</div>
+
+<!-- ボード提案 -->
+<div class="card">
+  <h2>おすすめボード</h2>
+  <p id="board"></p>
+</div>
+
+</div>
+
 <script>
-function generate() {
-  const wave = document.getElementById("wave");
+function update() {
 
   const patterns = [
     {
       size: "腰〜腹",
       class: "small",
-      wind: "オフショア",
+      wind: "オンショア",
       rate: "△",
-      comment: "ちょっと物足りない"
+      swell: "弱",
+      comment: "ロング向き",
+      board: "Sampler"
     },
     {
       size: "胸〜肩",
       class: "medium",
-      wind: "弱オフ",
+      wind: "オフショア",
       rate: "○",
-      comment: "ファンウェーブ！"
+      swell: "中",
+      comment: "ファンウェーブ",
+      board: "Two Happy"
     },
     {
       size: "頭〜頭オーバー",
       class: "big",
       wind: "サイドオフ",
       rate: "◎",
-      comment: "最高コンディション🔥"
+      swell: "強",
+      comment: "チューブあり🔥",
+      board: "M23"
     }
   ];
 
   const p = patterns[Math.floor(Math.random()*patterns.length)];
 
-  wave.className = "wave " + p.class;
-  wave.style.animation = "move 3s infinite linear";
+  document.getElementById("wave").className = "wave " + p.class;
 
   document.getElementById("size").innerText = "サイズ：" + p.size;
-  document.getElementById("size2").innerText = p.size;
+  document.getElementById("comment").innerText = p.comment;
   document.getElementById("wind").innerText = p.wind;
   document.getElementById("rate").innerText = p.rate;
-  document.getElementById("comment").innerText = p.comment;
+  document.getElementById("swell").innerText = p.swell;
+  document.getElementById("board").innerText = p.board;
 }
 </script>
 
