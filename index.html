@@ -4,27 +4,405 @@
   <meta charset="utf-8">
   <title>国会議員サイト証明書ダッシュボード</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --bg:#0b1020;
+      --bg2:#0f1730;
+      --card:#151b2f;
+      --line:#2b3758;
+      --text:#eef3ff;
+      --muted:#aeb9d6;
+      --accent:#4da3ff;
+      --ok:#1fbf75;
+      --warn:#ffb020;
+      --bad:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(180deg,var(--bg),var(--bg2) 40%,var(--bg));
+      color:var(--text);
+    }
+    .wrap{max-width:1400px;margin:0 auto;padding:24px}
+    .hero{
+      display:flex;gap:16px;justify-content:space-between;align-items:flex-start;
+      flex-wrap:wrap;margin-bottom:18px
+    }
+    .title{font-size:28px;font-weight:800}
+    .sub{color:var(--muted);margin-top:8px;line-height:1.7;max-width:950px}
+    .small{font-size:12px;color:var(--muted);margin-top:8px}
+    .btn{
+      background:var(--accent);color:white;border:none;border-radius:12px;
+      padding:12px 18px;font-weight:800;cursor:pointer;
+      box-shadow:0 6px 18px rgba(77,163,255,.25)
+    }
+    .btn.secondary{
+      background:#1c2747;
+      box-shadow:none;
+      border:1px solid var(--line);
+    }
+    .grid{
+      display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin:18px 0 22px
+    }
+    .card{
+      background:rgba(21,27,47,.92);
+      border:1px solid var(--line);
+      border-radius:18px;padding:16px;
+      box-shadow:0 8px 24px rgba(0,0,0,.22)
+    }
+    .label{color:var(--muted);font-size:13px}
+    .metric{font-size:30px;font-weight:900;margin-top:6px}
+    .section-title{font-size:20px;font-weight:800;margin:28px 0 12px}
+    .toolbar{
+      display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0
+    }
+    input,select{
+      background:#121a30;border:1px solid var(--line);color:var(--text);
+      padding:10px 12px;border-radius:10px
+    }
+    table{
+      width:100%;border-collapse:collapse;background:rgba(21,27,47,.92);
+      border:1px solid var(--line);border-radius:18px;overflow:hidden
+    }
+    th,td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+    th{background:#1a2240;text-align:left;position:sticky;top:0}
+    tr:hover td{background:rgba(255,255,255,.03)}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
+    .ok{background:rgba(31,191,117,.15);color:#6ff0aa}
+    .warn{background:rgba(255,176,32,.14);color:#ffd071}
+    .bad{background:rgba(255,107,107,.14);color:#ff9f9f}
+    .muted{color:var(--muted)}
+    .note{
+      background:#11192f;border:1px solid var(--line);padding:14px 16px;border-radius:16px;
+      color:var(--muted);line-height:1.7
+    }
+    a{color:#92c5ff}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    @media (max-width:1100px){ .grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+    @media (max-width:640px){ .grid{grid-template-columns:1fr;} .title{font-size:22px} }
+  </style>
 </head>
 <body>
-  <h1>国会議員サイト証明書ダッシュボード</h1>
-  <p id="updated">最終更新: -</p>
-  <button onclick="loadData()">最新 data.json を再読込</button>
-  <pre id="out">loading...</pre>
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <div class="title">国会議員サイト証明書ダッシュボード</div>
+      <div class="sub">
+        GitHub Pages で表示できる静的HTML版です。<br>
+        <b>このHTML自体は証明書の取得やクロスサイト確認を直接はできません。</b>
+        そのため、同じリポジトリ内の <code>data.json</code> を読み込んで表示する構成です。
+      </div>
+      <div class="small" id="generatedAt">最終更新: -</div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="reloadBtn">最新データを再読み込み</button>
+      <button class="btn secondary" id="openDataBtn">data.jsonを開く</button>
+    </div>
+  </div>
 
-  <script>
-    async function loadData() {
-      const res = await fetch('./data.json?t=' + Date.now(), { cache: 'no-store' });
-      if (!res.ok) throw new Error('data.json の読み込み失敗: ' + res.status);
-      const data = await res.json();
-      document.getElementById('updated').textContent =
-        '最終更新: ' + (data.summary?.generated_at || data.generated_at || '-');
-      document.getElementById('out').textContent =
-        JSON.stringify(data.summary || data, null, 2);
-    }
+  <div class="note">
+    ポイント:
+    1) この <code>index.html</code> は GitHub Pages にそのまま置けます。<br>
+    2) 実データは <code>data.json</code> を差し替えるだけで更新されます。<br>
+    3) 本当に「更新ボタンで現在情報を取得」までやるには、別途 Python / GitHub Actions / Cloudflare Workers / Vercel Functions などで
+    <code>data.json</code> を生成する仕組みが必要です。
+  </div>
 
-    loadData().catch(err => {
-      document.getElementById('out').textContent = String(err);
-    });
-  </script>
+  <div class="grid" id="summaryGrid"></div>
+
+  <div class="section-title">党別集計</div>
+  <div id="partyTable"></div>
+
+  <div class="section-title">議員別明細</div>
+  <div class="toolbar">
+    <input id="searchBox" placeholder="名前・党名で検索">
+    <select id="filterBox">
+      <option value="all">すべて</option>
+      <option value="gs_leg">GS国会議員用のみ</option>
+      <option value="gs_any">GlobalSign証明書のみ</option>
+      <option value="seal">サイトシールあり</option>
+      <option value="no_site">サイト未取得</option>
+    </select>
+  </div>
+  <div id="detailTable"></div>
+</div>
+
+<script>
+let DATA = {
+  summary: {
+    total_members: 0,
+    with_site: 0,
+    https_count: 0,
+    gs_count: 0,
+    gs_legislator_count: 0,
+    site_seal_count: 0,
+    gs_share_all_members: 0,
+    gs_share_sites_only: 0,
+    site_seal_share_sites_only: 0,
+    by_party: [],
+    generated_at: "-"
+  },
+  results: []
+};
+
+function pill(flag, okText="Yes", noText="No"){
+  return flag
+    ? `<span class="pill ok">${okText}</span>`
+    : `<span class="pill bad">${noText}</span>`;
+}
+
+function renderSummary(s){
+  const items = [
+    ["現職議員総数", s.total_members],
+    ["サイト取得数", s.with_site],
+    ["HTTPSサイト数", s.https_count],
+    ["GS証明書数", s.gs_count],
+    ["GS国会議員用数", s.gs_legislator_count],
+    ["GS国会議員用シェア(全議員)", `${s.gs_share_all_members}%`],
+    ["GS国会議員用シェア(サイト取得母数)", `${s.gs_share_sites_only}%`],
+    ["サイトシール数", s.site_seal_count],
+    ["サイトシールシェア(サイト取得母数)", `${s.site_seal_share_sites_only}%`],
+  ];
+  document.getElementById("summaryGrid").innerHTML = items.map(([label,val]) => `
+    <div class="card">
+      <div class="label">${label}</div>
+      <div class="metric">${val}</div>
+    </div>
+  `).join("");
+}
+
+function renderPartyTable(rows){
+  let html = `<table><thead><tr>
+    <th>党名</th><th>総数</th><th>サイト取得</th><th>GS国会議員用</th><th>GS</th><th>サイトシール</th>
+  </tr></thead><tbody>`;
+  for(const r of rows){
+    html += `<tr>
+      <td>${r.party ?? "-"}</td>
+      <td>${r.total ?? 0}</td>
+      <td>${r.with_site ?? 0}</td>
+      <td>${r.gs_leg ?? 0}</td>
+      <td>${r.gs ?? 0}</td>
+      <td>${r.seal ?? 0}</td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  document.getElementById("partyTable").innerHTML = html;
+}
+
+function filteredResults(){
+  const q = document.getElementById("searchBox").value.trim().toLowerCase();
+  const filter = document.getElementById("filterBox").value;
+
+  return DATA.results.filter(r => {
+    const hit = !q || [
+      r.name, r.party, r.chamber, r.cert_subject_o, r.cert_issuer_o, r.cert_issuer_cn
+    ].filter(Boolean).join(" ").toLowerCase().includes(q);
+
+    if(!hit) return false;
+    if(filter === "gs_leg") return !!r.is_gs_legislator_cert;
+    if(filter === "gs_any") return !!r.is_gs;
+    if(filter === "seal") return !!r.site_seal_found;
+    if(filter === "no_site") return !r.official_url;
+    return true;
+  });
+}
+
+function renderDetailTable(){
+  const rows = filteredResults();
+  let html = `<table><thead><tr>
+    <th>院</th><th>氏名</th><th>党</th><th>サイト</th><th>GS国会議員用</th>
+    <th>GS</th><th>サイトシール</th><th>Subject O</th><th>Issuer</th><th>備考</th>
+  </tr></thead><tbody>`;
+
+  for(const r of rows){
+    const site = r.official_url
+      ? `<a href="${r.official_url}" target="_blank" rel="noopener">公式サイト</a>`
+      : `<span class="muted">-</span>`;
+    const issuer = [r.cert_issuer_o, r.cert_issuer_cn].filter(Boolean).join(" / ") || "-";
+    const notes = Array.isArray(r.notes) && r.notes.length ? r.notes.join("<br>") : "-";
+
+    html += `<tr>
+      <td>${r.chamber ?? "-"}</td>
+      <td>${r.name ?? "-"}</td>
+      <td>${r.party ?? "-"}</td>
+      <td>${site}</td>
+      <td>${pill(r.is_gs_legislator_cert, "該当", "非該当")}</td>
+      <td>${pill(r.is_gs, "GS", "非GS")}</td>
+      <td>${pill(r.site_seal_found, "あり", "なし")}</td>
+      <td>${r.cert_subject_o ?? "-"}</td>
+      <td>${issuer}</td>
+      <td>${notes}</td>
+    </tr>`;
+  }
+
+  html += `</tbody></table>`;
+  document.getElementById("detailTable").innerHTML = html;
+}
+
+async function loadData(){
+  const res = await fetch(`./data.json?t=${Date.now()}`, {cache: "no-store"});
+  if(!res.ok) throw new Error(`data.json の読み込みに失敗: ${res.status}`);
+  DATA = await res.json();
+
+  const generatedAt =
+    DATA.summary?.generated_at ||
+    DATA.generated_at ||
+    "-";
+
+  document.getElementById("generatedAt").textContent = `最終更新: ${generatedAt}`;
+  renderSummary(DATA.summary || {});
+  renderPartyTable(DATA.summary?.by_party || []);
+  renderDetailTable();
+}
+
+document.getElementById("reloadBtn").addEventListener("click", async () => {
+  try{
+    await loadData();
+    alert("最新の data.json を再読み込みしました。");
+  }catch(e){
+    alert(e.message);
+  }
+});
+
+document.getElementById("openDataBtn").addEventListener("click", () => {
+  window.open("./data.json", "_blank");
+});
+
+document.getElementById("searchBox").addEventListener("input", renderDetailTable);
+document.getElementById("filterBox").addEventListener("change", renderDetailTable);
+
+loadData().catch(err => {
+  document.getElementById("summaryGrid").innerHTML = `
+    <div class="card" style="grid-column:1/-1">
+      <div class="label">エラー</div>
+      <div style="margin-top:8px">${err.message}</div>
+      <div class="small" style="margin-top:8px">同じフォルダに data.json を置いてください。</div>
+    </div>
+  `;
+});
+</script>
 </body>
 </html>
+
+
+{
+  "generated_at": "2026-04-23T15:30:00",
+  "summary": {
+    "generated_at": "2026-04-23T15:30:00",
+    "total_members": 713,
+    "with_site": 310,
+    "https_count": 302,
+    "gs_count": 84,
+    "gs_legislator_count": 61,
+    "site_seal_count": 19,
+    "gs_share_all_members": 8.6,
+    "gs_share_sites_only": 19.7,
+    "site_seal_share_sites_only": 6.1,
+    "by_party": [
+      {
+        "party": "自由民主党",
+        "total": 250,
+        "with_site": 120,
+        "gs_leg": 30,
+        "gs": 38,
+        "seal": 7
+      },
+      {
+        "party": "立憲民主党",
+        "total": 150,
+        "with_site": 70,
+        "gs_leg": 10,
+        "gs": 12,
+        "seal": 3
+      },
+      {
+        "party": "日本維新の会",
+        "total": 60,
+        "with_site": 35,
+        "gs_leg": 7,
+        "gs": 8,
+        "seal": 2
+      },
+      {
+        "party": "公明党",
+        "total": 40,
+        "with_site": 20,
+        "gs_leg": 5,
+        "gs": 6,
+        "seal": 1
+      },
+      {
+        "party": "国民民主党",
+        "total": 35,
+        "with_site": 18,
+        "gs_leg": 4,
+        "gs": 4,
+        "seal": 1
+      }
+    ]
+  },
+  "results": [
+    {
+      "chamber": "衆議院",
+      "name": "山田太郎",
+      "party": "自由民主党",
+      "official_url": "https://example.jp",
+      "source_url": "https://ja.wikipedia.org/wiki/山田太郎",
+      "final_url": "https://example.jp",
+      "status": "ok",
+      "http_status": 200,
+      "cert_subject_cn": "example.jp",
+      "cert_subject_o": "自由民主党",
+      "cert_issuer_o": "GMO GlobalSign, Inc.",
+      "cert_issuer_cn": "GlobalSign RSA OV SSL CA 2018",
+      "is_https": true,
+      "is_gs": true,
+      "is_gs_legislator_cert": true,
+      "site_seal_found": true,
+      "notes": []
+    },
+    {
+      "chamber": "参議院",
+      "name": "鈴木花子",
+      "party": "立憲民主党",
+      "official_url": "https://sample.jp",
+      "source_url": "https://ja.wikipedia.org/wiki/鈴木花子",
+      "final_url": "https://sample.jp",
+      "status": "ok",
+      "http_status": 200,
+      "cert_subject_cn": "sample.jp",
+      "cert_subject_o": "株式会社サンプル",
+      "cert_issuer_o": "Let's Encrypt",
+      "cert_issuer_cn": "R10",
+      "is_https": true,
+      "is_gs": false,
+      "is_gs_legislator_cert": false,
+      "site_seal_found": false,
+      "notes": [
+        "GS議員用には非該当"
+      ]
+    },
+    {
+      "chamber": "衆議院",
+      "name": "佐藤次郎",
+      "party": "無所属",
+      "official_url": null,
+      "source_url": "https://ja.wikipedia.org/wiki/佐藤次郎",
+      "final_url": null,
+      "status": "site_not_found",
+      "http_status": null,
+      "cert_subject_cn": null,
+      "cert_subject_o": null,
+      "cert_issuer_o": null,
+      "cert_issuer_cn": null,
+      "is_https": false,
+      "is_gs": false,
+      "is_gs_legislator_cert": false,
+      "site_seal_found": false,
+      "notes": [
+        "公式サイトURLを取得できませんでした"
+      ]
+    }
+  ]
+}
