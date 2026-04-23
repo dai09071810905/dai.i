@@ -9,6 +9,7 @@ import json
 import re
 import socket
 import ssl
+import subprocess
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -19,7 +20,7 @@ from bs4 import BeautifulSoup
 
 
 OUT_FILE = Path("data.json")
-USER_AGENT = "DietCertDashboard/1.3 (+GitHub Actions)"
+USER_AGENT = "DietCertDashboard/1.4 (+GitHub Actions)"
 TIMEOUT = 20
 MAX_ENRICH_WORKERS = 12
 MAX_SCAN_WORKERS = 20
@@ -31,8 +32,6 @@ session.headers.update(HEADERS)
 
 GS_KEYWORDS = [
     "globalsign",
-    "global sign",
-    "gmo globalsign",
 ]
 
 SITE_SEAL_PATTERNS = [
@@ -136,7 +135,7 @@ def now_iso() -> str:
 
 def get_text(url: str) -> Optional[str]:
     try:
-        response = session.get(url, timeout=TIMEOUT)
+        response = session.get(url, timeout=TIMEOUT, allow_redirects=True)
         response.raise_for_status()
         response.encoding = response.apparent_encoding
         return response.text
@@ -246,95 +245,51 @@ def get_shugiin_members() -> List[Member]:
 
 
 def get_sangiin_members() -> List[Member]:
-
     url = "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm"
-
     html = get_text(url)
-
     if not html:
-
         return []
 
     soup = BeautifulSoup(html, "html.parser")
+    lines = [re.sub(r"\s+", " ", line).strip() for line in soup.get_text("\n").splitlines()]
+    lines = [line for line in lines if line]
+
+    party_map = {
+        "自民": "自由民主党",
+        "立憲": "立憲民主党",
+        "維新": "日本維新の会",
+        "公明": "公明党",
+        "民主": "国民民主党",
+        "参政": "参政党",
+        "共産": "日本共産党",
+        "れ新": "れいわ新選組",
+        "保守": "日本保守党",
+        "沖縄": "沖縄の風",
+        "みら": "チームみらい",
+        "社民": "社会民主党",
+        "無所属": "無所属",
+    }
 
     members: List[Member] = []
 
-    party_map = {
-
-        "自民": "自由民主党",
-
-        "立憲": "立憲民主党",
-
-        "維新": "日本維新の会",
-
-        "公明": "公明党",
-
-        "民主": "国民民主党",
-
-        "参政": "参政党",
-
-        "共産": "日本共産党",
-
-        "れ新": "れいわ新選組",
-
-        "保守": "日本保守党",
-
-        "沖縄": "沖縄の風",
-
-        "みら": "チームみらい",
-
-        "社民": "社会民主党",
-
-        "無所属": "無所属",
-
-    }
-
-    text = soup.get_text("\n")
-
-    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
-
-    lines = [line for line in lines if line]
-
-    for i in range(len(lines) - 4):
-
-        name = lines[i]
-
-        reading = lines[i + 1]
-
-        party_abbr = lines[i + 2]
-
-        district = lines[i + 3]
-
-        term = lines[i + 4]
-
-        if not is_person_name(name):
-
-            continue
-
-        if not re.fullmatch(r"[ぁ-んァ-ンー ]{2,60}", reading):
-
-            continue
-
-        if party_abbr not in party_map:
-
-            continue
-
-        if "令和" not in term:
-
+    for line in lines:
+        match = re.match(
+            r"^([一-龥々〆ヵヶぁ-んァ-ンー ]{2,40})\s+"
+            r"([ぁ-んァ-ンー ]{2,60})\s+"
+            r"(自民|立憲|維新|公明|民主|参政|共産|れ新|保守|沖縄|みら|社民|無所属)\s+"
+            r"(\S+)\s+"
+            r"(令和\d+年\d+月\d+日)",
+            line,
+        )
+        if not match:
             continue
 
         members.append(
-
             Member(
-
                 chamber="参議院",
-
-                name=clean_name(name),
-
-                party=party_map[party_abbr],
-
+                name=clean_name(match.group(1)),
+                party=party_map[match.group(3)],
             )
-
         )
 
     return list({(m.chamber, m.name): m for m in members}.values())
@@ -454,30 +409,53 @@ def enrich_member(member: Member) -> Member:
 
 
 def extract_cert(hostname: str, port: int = 443) -> Optional[dict]:
-    context = ssl.create_default_context()
-    context.check_hostname = False
-    context.verify_mode = ssl.CERT_NONE
-
     try:
-        with socket.create_connection((hostname, port), timeout=TIMEOUT) as sock:
-            with context.wrap_socket(sock, server_hostname=hostname) as tls_socket:
-                return tls_socket.getpeercert()
+        pem = ssl.get_server_certificate((hostname, port))
+        proc = subprocess.run(
+            ["openssl", "x509", "-noout", "-subject", "-issuer"],
+            input=pem,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+
+        subject_line = ""
+        issuer_line = ""
+
+        for line in proc.stdout.splitlines():
+            line = line.strip()
+            if line.startswith("subject="):
+                subject_line = line[len("subject="):].strip()
+            elif line.startswith("issuer="):
+                issuer_line = line[len("issuer="):].strip()
+
+        def pick(field: str, text: str) -> Optional[str]:
+            patterns = [
+                rf"{field}\s*=\s*([^,/]+)",
+                rf"/{field}=([^/]+)",
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, text)
+                if match:
+                    return match.group(1).strip()
+            return None
+
+        return {
+            "subject": {
+                "commonName": pick("CN", subject_line),
+                "organizationName": pick("O", subject_line),
+            },
+            "issuer": {
+                "commonName": pick("CN", issuer_line),
+                "organizationName": pick("O", issuer_line),
+            },
+        }
     except Exception:
         return None
 
 
-def parse_name_tuple(name_tuple) -> Dict[str, str]:
-    result: Dict[str, str] = {}
-    for rdn in name_tuple or ():
-        for key, val in rdn:
-            result[key] = val
-    return result
-
-
 def contains_gs(*texts: Optional[str]) -> bool:
-
     joined = " ".join(text or "" for text in texts).lower()
-
     return "globalsign" in joined
 
 
@@ -494,10 +472,7 @@ def is_probable_gs_legislator_cert(
 
     normalized_party = normalize_party(party)
     normalized_subject = normalize_party(subject_o)
-
-    return normalized_party == normalized_subject or bool(
-        normalized_party and (normalized_party in subject_o or subject_o in normalized_party)
-    )
+    return normalized_party == normalized_subject
 
 
 def detect_site_seal(html: str) -> bool:
@@ -543,8 +518,8 @@ def scan_site(member: Member) -> ScanResult:
     if is_https and hostname:
         cert = extract_cert(hostname, parsed.port or 443)
         if cert:
-            subject = parse_name_tuple(cert.get("subject"))
-            issuer = parse_name_tuple(cert.get("issuer"))
+            subject = cert.get("subject", {})
+            issuer = cert.get("issuer", {})
             cert_subject_cn = subject.get("commonName")
             cert_subject_o = subject.get("organizationName")
             cert_issuer_o = issuer.get("organizationName")
@@ -559,13 +534,13 @@ def scan_site(member: Member) -> ScanResult:
         html = response.text or ""
         site_seal = detect_site_seal(html)
 
-        if not is_https and final_url.lower().startswith("https://"):
+        if not is_https and final_url and final_url.lower().startswith("https://"):
             final_host = urlparse(final_url).hostname
             if final_host:
                 cert = extract_cert(final_host, 443)
                 if cert:
-                    subject = parse_name_tuple(cert.get("subject"))
-                    issuer = parse_name_tuple(cert.get("issuer"))
+                    subject = cert.get("subject", {})
+                    issuer = cert.get("issuer", {})
                     cert_subject_cn = subject.get("commonName")
                     cert_subject_o = subject.get("organizationName")
                     cert_issuer_o = issuer.get("organizationName")
