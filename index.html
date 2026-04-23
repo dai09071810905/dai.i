@@ -1,207 +1,1075 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>Dai Surf Dashboard</title>
-
-<style>
-body {
-  margin: 0;
-  font-family: Arial;
-  background: #0b1e2d;
-  color: white;
-}
-
-/* ヘッダー */
-.header {
-  background: #0d3b66;
-  padding: 15px 20px;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-/* レイアウト */
-.container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  padding: 15px;
-}
-
-.card {
-  background: #132f4c;
-  padding: 15px;
-  border-radius: 10px;
-}
-
-/* 波グラフィック */
-.ocean {
-  position: relative;
-  height: 180px;
-  background: linear-gradient(#4facfe, #00f2fe);
-  overflow: hidden;
-  border-radius: 10px;
-}
-
-.wave {
-  position: absolute;
-  bottom: 0;
-  width: 200%;
-  background: rgba(255,255,255,0.5);
-  border-radius: 40%;
-  animation: move 4s infinite linear;
-}
-
-.surfer {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 15px;
-  height: 50px;
-  background: black;
-}
-
-@keyframes move {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-.small { height: 50px; }
-.medium { height: 100px; }
-.big { height: 160px; }
-
-/* ボタン */
-button {
-  margin-top: 10px;
-  padding: 8px 15px;
-  border: none;
-  background: #ffcc00;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-/* ステータス */
-.status {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 10px;
-}
-
-.status div {
-  text-align: center;
-}
-
-/* 時間別 */
-.timeline {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-}
-
-.time-box {
-  background: #1d4f7a;
-  padding: 10px;
-  border-radius: 8px;
-  width: 30%;
-  text-align: center;
-}
-</style>
-</head>
-
-<body>
-
-<div class="header">🏄 Dai Surf Dashboard - Pererenan</div>
-
-<div class="container">
-
-<!-- 今日の波 -->
-<div class="card">
-  <h2>今日の波</h2>
-
-  <div class="ocean">
-    <div id="wave" class="wave"></div>
-    <div class="surfer"></div>
-  </div>
-
-  <p id="size"></p>
-  <p id="comment"></p>
-
-  <button onclick="update()">更新</button>
-</div>
-
-<!-- コンディション -->
-<div class="card">
-  <h2>コンディション</h2>
-  <div class="status">
-    <div>🌬<br><span id="wind"></span></div>
-    <div>👍<br><span id="rate"></span></div>
-    <div>🌊<br><span id="swell"></span></div>
-  </div>
-</div>
-
-<!-- 時間別 -->
-<div class="card">
-  <h2>時間別</h2>
-  <div class="timeline">
-    <div class="time-box">朝<br>胸</div>
-    <div class="time-box">昼<br>肩</div>
-    <div class="time-box">夕<br>頭</div>
-  </div>
-</div>
-
-<!-- ボード提案 -->
-<div class="card">
-  <h2>おすすめボード</h2>
-  <p id="board"></p>
-</div>
-
-</div>
-
-<script>
-function update() {
-
-  const patterns = [
-    {
-      size: "腰〜腹",
-      class: "small",
-      wind: "オンショア",
-      rate: "△",
-      swell: "弱",
-      comment: "ロング向き",
-      board: "Sampler"
-    },
-    {
-      size: "胸〜肩",
-      class: "medium",
-      wind: "オフショア",
-      rate: "○",
-      swell: "中",
-      comment: "ファンウェーブ",
-      board: "Two Happy"
-    },
-    {
-      size: "頭〜頭オーバー",
-      class: "big",
-      wind: "サイドオフ",
-      rate: "◎",
-      swell: "強",
-      comment: "チューブあり🔥",
-      board: "M23"
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dai Surf Premium Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(10, 26, 44, 0.72);
+      --panel-strong: rgba(13, 35, 58, 0.92);
+      --line: rgba(255,255,255,0.08);
+      --text: #eaf6ff;
+      --muted: #91abc0;
+      --accent: #4fd1ff;
+      --accent-2: #7b61ff;
+      --good: #23d18b;
+      --warn: #ffc857;
+      --danger: #ff6b6b;
+      --shadow: 0 20px 50px rgba(0,0,0,0.35);
+      --radius: 22px;
     }
-  ];
 
-  const p = patterns[Math.floor(Math.random()*patterns.length)];
+    * { box-sizing: border-box; }
 
-  document.getElementById("wave").className = "wave " + p.class;
+    body {
+      margin: 0;
+      font-family: 'Inter', Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 20%, rgba(79,209,255,0.18), transparent 28%),
+        radial-gradient(circle at 85% 15%, rgba(123,97,255,0.18), transparent 24%),
+        linear-gradient(180deg, #081220 0%, #09192c 38%, #06111d 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
 
-  document.getElementById("size").innerText = "サイズ：" + p.size;
-  document.getElementById("comment").innerText = p.comment;
-  document.getElementById("wind").innerText = p.wind;
-  document.getElementById("rate").innerText = p.rate;
-  document.getElementById("swell").innerText = p.swell;
-  document.getElementById("board").innerText = p.board;
-}
-</script>
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent 88%);
+    }
 
+    .app {
+      width: min(1440px, calc(100% - 32px));
+      margin: 22px auto 32px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+      padding: 18px 22px;
+      background: rgba(6, 17, 31, 0.45);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-badge {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(79,209,255,0.28), rgba(123,97,255,0.24));
+      border: 1px solid rgba(255,255,255,0.1);
+      font-size: 24px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(20px, 2.6vw, 30px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .brand p,
+    .mini-note,
+    .label,
+    .subtle {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill,
+    .btn {
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .btn {
+      cursor: pointer;
+      background: linear-gradient(135deg, rgba(79,209,255,0.22), rgba(123,97,255,0.22));
+      transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.18);
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 18px;
+    }
+
+    .left,
+    .right {
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(145deg, rgba(10,28,47,0.92), rgba(8,21,35,0.78));
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      min-height: 380px;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -10%;
+      top: -15%;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(79,209,255,0.22), transparent 65%);
+    }
+
+    .hero-top {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+      color: #cfeeff;
+      margin-bottom: 14px;
+    }
+
+    .hero h2 {
+      margin: 0;
+      font-size: clamp(30px, 5vw, 58px);
+      line-height: .95;
+      letter-spacing: -0.05em;
+      max-width: 560px;
+    }
+
+    .hero p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      max-width: 620px;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .score {
+      min-width: 160px;
+      padding: 18px 20px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      text-align: center;
+    }
+
+    .score .value {
+      font-size: 48px;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      margin-top: 8px;
+    }
+
+    .ocean-stage {
+      position: relative;
+      z-index: 1;
+      margin-top: 28px;
+      height: 210px;
+      border-radius: 28px;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(122, 214, 255, 0.32) 0%, rgba(20, 84, 130, 0.58) 34%, rgba(5, 27, 45, 0.92) 100%),
+        linear-gradient(90deg, rgba(255,255,255,0.06), transparent);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .sun-glow {
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,218,117,0.95) 0%, rgba(255,218,117,0.3) 35%, transparent 70%);
+      top: 26px;
+      right: 80px;
+      filter: blur(6px);
+      opacity: .9;
+    }
+
+    .wave-back,
+    .wave-mid,
+    .wave-front {
+      position: absolute;
+      width: 220%;
+      left: -50%;
+      bottom: 0;
+      border-radius: 42%;
+    }
+
+    .wave-back {
+      height: 92px;
+      background: rgba(151, 228, 255, 0.22);
+      animation: drift 15s linear infinite;
+      bottom: 72px;
+    }
+
+    .wave-mid {
+      height: 118px;
+      background: rgba(92, 205, 255, 0.34);
+      animation: drift 11s linear infinite reverse;
+      bottom: 32px;
+    }
+
+    .wave-front {
+      height: var(--wave-height, 132px);
+      background: linear-gradient(180deg, rgba(130, 231, 255, 0.74), rgba(15, 118, 173, 0.9));
+      animation: drift 8.5s linear infinite;
+      box-shadow: inset 0 14px 18px rgba(255,255,255,0.14);
+    }
+
+    .foam {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: calc(var(--wave-height, 132px) - 10px);
+      height: 18px;
+      background: linear-gradient(90deg, rgba(255,255,255,.0), rgba(255,255,255,.72), rgba(255,255,255,.0));
+      filter: blur(2px);
+      opacity: .75;
+      animation: shimmer 3s ease-in-out infinite;
+    }
+
+    .surfer {
+      position: absolute;
+      left: var(--surfer-x, 58%);
+      bottom: calc(var(--wave-height, 132px) - 28px);
+      width: 60px;
+      height: 60px;
+      transform: translateX(-50%) rotate(-10deg);
+      transition: left .5s ease, bottom .5s ease;
+    }
+
+    .surfer::before {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 12px;
+      width: 42px;
+      height: 10px;
+      border-radius: 999px;
+      background: #f7f7f7;
+      box-shadow: 0 0 18px rgba(255,255,255,0.3);
+    }
+
+    .surfer::after {
+      content: "";
+      position: absolute;
+      left: 28px;
+      bottom: 9px;
+      width: 8px;
+      height: 34px;
+      border-radius: 999px;
+      background: #09111a;
+      box-shadow: -10px 10px 0 0 #09111a, 8px 12px 0 0 #09111a, 6px -8px 0 0 #09111a;
+    }
+
+    .hero-stats {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .stat-tile,
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .stat-tile {
+      padding: 16px 18px;
+    }
+
+    .stat-tile .k {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-tile .v {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .card {
+      padding: 22px;
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 19px;
+      letter-spacing: -0.03em;
+    }
+
+    .card .meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .forecast-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+    }
+
+    .forecast-item {
+      padding: 14px 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.06);
+      text-align: center;
+    }
+
+    .forecast-item.active {
+      background: linear-gradient(180deg, rgba(79,209,255,0.18), rgba(123,97,255,0.14));
+      border-color: rgba(79,209,255,0.35);
+    }
+
+    .forecast-item .time {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .forecast-item .height {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .forecast-item .desc {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .board-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .board-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .board-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, rgba(79,209,255,0.22), rgba(123,97,255,0.2));
+      font-size: 18px;
+    }
+
+    .board-item strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .board-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .tag {
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid rgba(255,255,255,0.06);
+      white-space: nowrap;
+    }
+
+    .tag.good { background: rgba(35,209,139,0.14); color: #8ff0c3; }
+    .tag.warn { background: rgba(255,200,87,0.12); color: #ffe39a; }
+    .tag.info { background: rgba(79,209,255,0.14); color: #a6e8ff; }
+
+    .conditions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .condition-box {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .condition-box .t {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .condition-box .n {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .condition-box .s {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .meter {
+      margin-top: 14px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+
+    .meter > span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #4fd1ff, #7b61ff);
+    }
+
+    .tide-rows {
+      display: grid;
+      gap: 10px;
+    }
+
+    .tide-row {
+      display: grid;
+      grid-template-columns: 64px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .bar {
+      height: 10px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(79,209,255,0.92), rgba(123,97,255,0.85));
+    }
+
+    .session {
+      display: grid;
+      gap: 14px;
+    }
+
+    .session-item {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .session-item strong {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    .session-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .spot-map {
+      position: relative;
+      min-height: 220px;
+      overflow: hidden;
+      border-radius: 22px;
+      background:
+        linear-gradient(135deg, rgba(9, 44, 73, 0.9), rgba(9, 25, 43, 0.86)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 32px),
+        repeating-linear-gradient(rgba(255,255,255,0.04) 0 1px, transparent 1px 32px);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .shoreline {
+      position: absolute;
+      right: -40px;
+      top: -10px;
+      width: 240px;
+      height: 300px;
+      background: linear-gradient(180deg, #d1b483, #a88455);
+      border-radius: 55% 0 0 55%;
+      transform: rotate(6deg);
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.12);
+    }
+
+    .reef {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(30, 82, 120, 0.55);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .marker {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(6, 17, 31, 0.76);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #4fd1ff;
+      box-shadow: 0 0 0 6px rgba(79,209,255,0.15);
+    }
+
+    .premium-footer {
+      margin-top: 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 0 6px;
+    }
+
+    @keyframes drift {
+      from { transform: translateX(0); }
+      to { transform: translateX(-35%); }
+    }
+
+    @keyframes shimmer {
+      0%,100% { opacity: .35; transform: translateX(-10px); }
+      50% { opacity: .9; transform: translateX(10px); }
+    }
+
+    @media (max-width: 1100px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero-stats { grid-template-columns: repeat(2, 1fr); }
+      .forecast-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 720px) {
+      .app { width: min(100% - 20px, 1440px); }
+      .topbar, .hero, .card { padding: 18px; }
+      .hero h2 { font-size: 34px; }
+      .forecast-grid { grid-template-columns: repeat(2, 1fr); }
+      .hero-stats, .conditions { grid-template-columns: 1fr; }
+      .board-item { grid-template-columns: auto 1fr; }
+      .board-item .tag { grid-column: 1 / -1; justify-self: start; }
+      .tide-row { grid-template-columns: 54px 1fr auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-badge">🏄</div>
+        <div>
+          <h1>Dai Surf Premium Dashboard</h1>
+          <p>Pererenan / Bali ・ セッション判断を一画面で</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="pill" id="lastUpdated">Last update --:--</div>
+        <div class="pill" id="liveStatus">● Live demo mode</div>
+        <button class="btn" id="refreshBtn">最新コンディションに更新</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="left">
+        <div class="hero">
+          <div class="hero-top">
+            <div>
+              <div class="eyebrow">PREMIUM FORECAST ・ PERERENAN MAIN PEAK</div>
+              <h2 id="headline">胸〜肩 / クリーンで走れる波</h2>
+              <p id="summary">
+                朝はオフ寄りで面が整いやすく、ミドル〜インサイドでつなげやすいコンディション。
+                混雑が強まる前の早い時間がベターです。
+              </p>
+            </div>
+            <div class="score">
+              <div class="label">Surf Score</div>
+              <div class="value" id="scoreValue">82</div>
+              <div class="mini-note" id="scoreLabel">Good Session</div>
+            </div>
+          </div>
+
+          <div class="ocean-stage" id="oceanStage">
+            <div class="sun-glow"></div>
+            <div class="wave-back"></div>
+            <div class="wave-mid"></div>
+            <div class="foam"></div>
+            <div class="wave-front" id="waveFront"></div>
+            <div class="surfer" id="surfer"></div>
+          </div>
+
+          <div class="hero-stats">
+            <div class="stat-tile">
+              <div class="k">Wave Size</div>
+              <div class="v" id="waveSize">4.1 ft</div>
+            </div>
+            <div class="stat-tile">
+              <div class="k">Wind</div>
+              <div class="v" id="windValue">4 kts</div>
+            </div>
+            <div class="stat-tile">
+              <div class="k">Primary Swell</div>
+              <div class="v" id="swellValue">2.1 m</div>
+            </div>
+            <div class="stat-tile">
+              <div class="k">Crowd</div>
+              <div class="v" id="crowdValue">Medium</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>時間別コンディション</h3>
+              <div class="meta">波の強さ・風・乗りやすさを一覧表示</div>
+            </div>
+            <div class="pill">Next 18 hours</div>
+          </div>
+          <div class="forecast-grid" id="forecastGrid"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>おすすめボード</h3>
+              <div class="meta">今のサイズ感と面に合わせたクイーバー提案</div>
+            </div>
+            <div class="pill" id="boardFocus">Current call</div>
+          </div>
+          <div class="board-list" id="boardList"></div>
+        </div>
+      </section>
+
+      <aside class="right">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>コンディション詳細</h3>
+              <div class="meta">風・うねり・乗りやすさ</div>
+            </div>
+            <div class="pill" id="qualityBadge">Quality</div>
+          </div>
+          <div class="conditions">
+            <div class="condition-box">
+              <div class="t">Wind Direction</div>
+              <div class="n" id="windDir">ENE</div>
+              <div class="s" id="windNote">軽いオフショア</div>
+            </div>
+            <div class="condition-box">
+              <div class="t">Wave Quality</div>
+              <div class="n" id="qualityValue">A-</div>
+              <div class="s" id="qualityNote">面が整って走りやすい</div>
+            </div>
+            <div class="condition-box">
+              <div class="t">Swell Period</div>
+              <div class="n" id="periodValue">13s</div>
+              <div class="s">周期がありフェイスが続きやすい</div>
+            </div>
+            <div class="condition-box">
+              <div class="t">Consistency</div>
+              <div class="n" id="consistencyValue">74%</div>
+              <div class="s">セット間隔はやや長め</div>
+            </div>
+          </div>
+
+          <div class="meter"><span id="qualityMeter" style="width:82%"></span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>タイドレンジ</h3>
+              <div class="meta">潮回りと入りどきの目安</div>
+            </div>
+            <div class="pill" id="bestWindow">Best window</div>
+          </div>
+          <div class="tide-rows" id="tideRows"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>セッションプラン</h3>
+              <div class="meta">今日の狙いどころ</div>
+            </div>
+            <div class="pill">AI Coach</div>
+          </div>
+          <div class="session" id="sessionList"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>スポットイメージ</h3>
+              <div class="meta">ピーク・チャネル・混雑帯の見え方</div>
+            </div>
+            <div class="pill">Visual map</div>
+          </div>
+          <div class="spot-map">
+            <div class="shoreline"></div>
+            <div class="reef" style="left: 16%; top: 32%; width: 88px; height: 48px;"></div>
+            <div class="reef" style="left: 34%; top: 58%; width: 120px; height: 58px;"></div>
+            <div class="reef" style="left: 56%; top: 24%; width: 72px; height: 36px;"></div>
+
+            <div class="marker" style="left: 14%; top: 22%;"><span class="dot"></span> Main Peak</div>
+            <div class="marker" style="left: 28%; top: 66%;"><span class="dot"></span> Takeoff Zone</div>
+            <div class="marker" style="left: 58%; top: 48%;"><span class="dot"></span> Channel</div>
+            <div class="marker" style="left: 61%; top: 18%;"><span class="dot"></span> Crowd Line</div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <div class="premium-footer">
+      <div>Demo UI ready for premium upgrade: API連携、潮汐API、Surfline/SOLspot系の実データ差し込み前提で設計</div>
+      <div>Designed for mobile + desktop</div>
+    </div>
+  </div>
+
+  <script>
+    const scenarios = [
+      {
+        headline: '胸〜肩 / クリーンで走れる波',
+        summary: '朝はオフ寄りで面が整いやすく、ミドル〜インサイドでつなげやすいコンディション。混雑が強まる前の早い時間がベターです。',
+        score: 82,
+        scoreLabel: 'Good Session',
+        waveFt: '4.1 ft',
+        wind: '4 kts',
+        swell: '2.1 m',
+        crowd: 'Medium',
+        waveHeightPx: '126px',
+        surferX: '58%',
+        quality: 'A-',
+        qualityNote: '面が整って走りやすい',
+        windDir: 'ENE',
+        windNote: '軽いオフショア',
+        period: '13s',
+        consistency: '74%',
+        qualityMeter: 82,
+        qualityBadge: 'Clean faces',
+        bestWindow: '6:00 - 8:30',
+        boardFocus: 'Performance + paddle',
+        forecast: [
+          ['06:00', '3.8ft', 'クリーン', true],
+          ['09:00', '4.1ft', 'ベスト'],
+          ['12:00', '4.4ft', '少し混雑'],
+          ['15:00', '4.0ft', '風入り気味'],
+          ['18:00', '3.6ft', '夕方まとまる'],
+          ['21:00', '3.2ft', 'ナイト参考']
+        ],
+        boards: [
+          ['⚡', 'Two Happy', '胸〜肩でスピードと反応を出しやすい。面が整っている時の第一候補。', 'Best', 'good'],
+          ['🏄', 'Happy Traveler', '少し混んでいても早めに乗れて、フェイスで余裕を作りやすい。', 'Easy entry', 'info'],
+          ['🌊', 'Sampler', '波数優先ならあり。小さめや厚めのセクションでも滑り出しが早い。', 'Backup', 'warn']
+        ],
+        tides: [
+          ['05:30', 26, 'Low'],
+          ['08:30', 72, 'Rising'],
+          ['12:10', 94, 'High'],
+          ['16:20', 44, 'Dropping']
+        ],
+        sessions: [
+          ['朝イチ', '最優先', '面が整いやすく、人が増える前に2〜3本の良い波を狙いやすい。'],
+          ['昼前', 'セカンド', 'サイズは残るがピークの混雑が上がるので、ポジション取り重視。'],
+          ['夕方', '様子見', '風が落ちればチャンス。厚めならボリュームある板が楽。']
+        ]
+      },
+      {
+        headline: '頭前後 / パワーあり、セット待ち長め',
+        summary: 'セットは厚みより押しがあり、テイクオフ後にしっかり加速できる日。ポジションが深すぎると刺さりやすいので注意。',
+        score: 88,
+        scoreLabel: 'Advanced Good',
+        waveFt: '5.8 ft',
+        wind: '6 kts',
+        swell: '2.7 m',
+        crowd: 'Low / Medium',
+        waveHeightPx: '154px',
+        surferX: '62%',
+        quality: 'A',
+        qualityNote: 'セットは力強く走れる',
+        windDir: 'E',
+        windNote: 'サイドオフ寄り',
+        period: '15s',
+        consistency: '68%',
+        qualityMeter: 88,
+        qualityBadge: 'Power swell',
+        bestWindow: '7:00 - 9:00',
+        boardFocus: 'Hold + confidence',
+        forecast: [
+          ['06:00', '5.3ft', '強いセット', true],
+          ['09:00', '5.8ft', 'ベスト'],
+          ['12:00', '6.0ft', 'ハード'],
+          ['15:00', '5.6ft', 'まだ強い'],
+          ['18:00', '5.1ft', '少し落ち着く'],
+          ['21:00', '4.6ft', '参考']
+        ],
+        boards: [
+          ['🌊', 'M23', '押しの強い波でもテイクオフの安心感が高く、サイズがある日に最有力。', 'Top pick', 'good'],
+          ['⚡', 'Happy Traveler', 'サイズが落ち着く時間帯なら動かしやすさと取り回しのバランスが良い。', 'Balanced', 'info'],
+          ['🏄', 'Two Happy', '自信があるなら可。テイクオフ位置と波選びがシビアになりやすい。', 'Expert only', 'warn']
+        ],
+        tides: [
+          ['05:10', 18, 'Low'],
+          ['08:10', 61, 'Rising'],
+          ['11:50', 98, 'High'],
+          ['16:40', 38, 'Dropping']
+        ],
+        sessions: [
+          ['朝イチ', 'ベスト', '混雑がまだ薄く、セットを見極めやすい。落ち着いてアウトから選ぶ日。'],
+          ['ミドル', '注意', 'サイズに対して人が増えると危険度が上がる。無理な深追いは避ける。'],
+          ['夕方', '狙い目', '少しサイズが落ちればM23やHappy Travelerで楽しみやすい。']
+        ]
+      },
+      {
+        headline: '腰〜腹 / ロングライドより本数重視',
+        summary: 'サイズは控えめで、厚いセクションをつないで遊ぶイメージ。波数を取りたい日で、パドルの早さが効きます。',
+        score: 71,
+        scoreLabel: 'Fun Small Day',
+        waveFt: '2.8 ft',
+        wind: '7 kts',
+        swell: '1.4 m',
+        crowd: 'High',
+        waveHeightPx: '94px',
+        surferX: '54%',
+        quality: 'B',
+        qualityNote: '遊べるが選ぶ必要あり',
+        windDir: 'SE',
+        windNote: 'ややオン気味',
+        period: '10s',
+        consistency: '81%',
+        qualityMeter: 71,
+        qualityBadge: 'Fun waves',
+        bestWindow: '6:30 - 7:30',
+        boardFocus: 'Volume wins',
+        forecast: [
+          ['06:00', '2.6ft', '小ぶり', true],
+          ['09:00', '2.8ft', '遊べる'],
+          ['12:00', '3.0ft', '厚め'],
+          ['15:00', '2.7ft', '風入り'],
+          ['18:00', '2.5ft', 'つなげれば○'],
+          ['21:00', '2.3ft', '参考']
+        ],
+        boards: [
+          ['🏄', 'Sampler', '小さめで厚い波に最も合いやすく、本数を取りたい日に強い。', 'Most fun', 'good'],
+          ['🌊', 'Happy Traveler', '十分あり。サイズが少し上がる時間帯なら走りやすい。', 'All-round', 'info'],
+          ['⚡', 'Two Happy', '乗れなくはないが、今日の優先度は低め。', 'Low priority', 'warn']
+        ],
+        tides: [
+          ['05:50', 34, 'Low'],
+          ['08:50', 66, 'Rising'],
+          ['12:30', 86, 'High'],
+          ['16:50', 52, 'Dropping']
+        ],
+        sessions: [
+          ['朝', '本数狙い', '人が増える前にピーク近くで早めに乗るのが有効。'],
+          ['昼', '板でカバー', '厚めになりやすいので、浮力ある板でつなぐ意識。'],
+          ['夕方', '軽く1ラウンド', '風が落ちれば遊べるが、無理に長く待たない方が満足度高め。']
+        ]
+      }
+    ];
+
+    const els = {
+      headline: document.getElementById('headline'),
+      summary: document.getElementById('summary'),
+      scoreValue: document.getElementById('scoreValue'),
+      scoreLabel: document.getElementById('scoreLabel'),
+      waveSize: document.getElementById('waveSize'),
+      windValue: document.getElementById('windValue'),
+      swellValue: document.getElementById('swellValue'),
+      crowdValue: document.getElementById('crowdValue'),
+      windDir: document.getElementById('windDir'),
+      windNote: document.getElementById('windNote'),
+      qualityValue: document.getElementById('qualityValue'),
+      qualityNote: document.getElementById('qualityNote'),
+      periodValue: document.getElementById('periodValue'),
+      consistencyValue: document.getElementById('consistencyValue'),
+      qualityMeter: document.getElementById('qualityMeter'),
+      qualityBadge: document.getElementById('qualityBadge'),
+      bestWindow: document.getElementById('bestWindow'),
+      boardFocus: document.getElementById('boardFocus'),
+      forecastGrid: document.getElementById('forecastGrid'),
+      boardList: document.getElementById('boardList'),
+      tideRows: document.getElementById('tideRows'),
+      sessionList: document.getElementById('sessionList'),
+      lastUpdated: document.getElementById('lastUpdated'),
+      oceanStage: document.getElementById('oceanStage')
+    };
+
+    function renderScenario(data) {
+      els.headline.textContent = data.headline;
+      els.summary.textContent = data.summary;
+      els.scoreValue.textContent = data.score;
+      els.scoreLabel.textContent = data.scoreLabel;
+      els.waveSize.textContent = data.waveFt;
+      els.windValue.textContent = data.wind;
+      els.swellValue.textContent = data.swell;
+      els.crowdValue.textContent = data.crowd;
+      els.windDir.textContent = data.windDir;
+      els.windNote.textContent = data.windNote;
+      els.qualityValue.textContent = data.quality;
+      els.qualityNote.textContent = data.qualityNote;
+      els.periodValue.textContent = data.period;
+      els.consistencyValue.textContent = data.consistency;
+      els.qualityMeter.style.width = data.qualityMeter + '%';
+      els.qualityBadge.textContent = data.qualityBadge;
+      els.bestWindow.textContent = 'Best: ' + data.bestWindow;
+      els.boardFocus.textContent = data.boardFocus;
+
+      els.oceanStage.style.setProperty('--wave-height', data.waveHeightPx);
+      els.oceanStage.style.setProperty('--surfer-x', data.surferX);
+
+      els.forecastGrid.innerHTML = data.forecast.map(([time, height, desc, active]) => `
+        <div class="forecast-item ${active ? 'active' : ''}">
+          <div class="time">${time}</div>
+          <div class="height">${height}</div>
+          <div class="desc">${desc}</div>
+        </div>
+      `).join('');
+
+      els.boardList.innerHTML = data.boards.map(([icon, name, desc, tag, kind]) => `
+        <div class="board-item">
+          <div class="board-icon">${icon}</div>
+          <div>
+            <strong>${name}</strong>
+            <p>${desc}</p>
+          </div>
+          <div class="tag ${kind}">${tag}</div>
+        </div>
+      `).join('');
+
+      els.tideRows.innerHTML = data.tides.map(([time, value, label]) => `
+        <div class="tide-row">
+          <div class="subtle">${time}</div>
+          <div class="bar"><span style="width:${value}%"></span></div>
+          <div>${label}</div>
+        </div>
+      `).join('');
+
+      els.sessionList.innerHTML = data.sessions.map(([name, badge, desc]) => `
+        <div class="session-item">
+          <strong><span>${name}</span><span class="tag info">${badge}</span></strong>
+          <p>${desc}</p>
+        </div>
+      `).join('');
+
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      els.lastUpdated.textContent = `Last update ${hh}:${mm}`;
+    }
+
+    function updateDashboard() {
+      const next = scenarios[Math.floor(Math.random() * scenarios.length)];
+      renderScenario(next);
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', updateDashboard);
+    renderScenario(scenarios[0]);
+  </script>
 </body>
 </html>
