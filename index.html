@@ -212,95 +212,169 @@
     .ocean {
       position: relative;
       margin-top: 24px;
-      height: 220px;
+      height: 250px;
       border-radius: 28px;
       overflow: hidden;
-      background: linear-gradient(180deg, rgba(125,216,255,.28), rgba(7,53,90,.45) 35%, rgba(2,17,31,.94));
+      background: linear-gradient(180deg, #f2f4f6 0%, #edf2f6 100%);
       border: 1px solid rgba(255,255,255,.08);
     }
 
-    .sun {
+    .wave-compare-wrap {
       position: absolute;
-      width: 120px;
-      height: 120px;
-      right: 70px;
-      top: 30px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,218,117,.95), rgba(255,218,117,.25) 38%, transparent 70%);
-      filter: blur(4px);
+      inset: 0;
+      overflow: hidden;
     }
 
-    .wave-back, .wave-mid, .wave-front {
+    .shore-slope {
       position: absolute;
-      left: -45%;
-      width: 210%;
-      bottom: 0;
-      border-radius: 42%;
+      left: -3%;
+      bottom: -2px;
+      width: 52%;
+      height: 34px;
+      background: linear-gradient(180deg, #cfae67, #a9813b);
+      clip-path: polygon(0 40%, 100% 85%, 100% 100%, 0 100%);
     }
 
-    .wave-back {
-      height: 84px;
-      bottom: 80px;
-      background: rgba(177,234,255,.18);
-      animation: drift 16s linear infinite;
+    .height-guides {
+      position: absolute;
+      left: 14%;
+      right: 9%;
+      top: 18px;
+      bottom: 16px;
+      pointer-events: none;
     }
 
-    .wave-mid {
-      height: 110px;
-      bottom: 36px;
-      background: rgba(111,214,255,.28);
-      animation: drift 12s linear infinite reverse;
-    }
-
-    .wave-front {
-      height: var(--wave-h, 130px);
-      background: linear-gradient(180deg, rgba(140,230,255,.72), rgba(14,120,174,.95));
-      box-shadow: inset 0 12px 16px rgba(255,255,255,.18);
-      animation: drift 8s linear infinite;
-    }
-
-    .foam {
+    .guide-line {
       position: absolute;
       left: 0;
       right: 0;
-      bottom: calc(var(--wave-h, 130px) - 12px);
-      height: 16px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent);
-      filter: blur(2px);
-      animation: shimmer 3s ease-in-out infinite;
+      border-top: 1px dashed rgba(90,100,110,.45);
     }
 
-    .surfer {
+    .surfer-figure {
       position: absolute;
-      left: var(--surfer-x, 58%);
-      bottom: calc(var(--wave-h, 130px) - 30px);
-      width: 62px;
-      height: 62px;
-      transform: translateX(-50%) rotate(-10deg);
-    }
-
-    .surfer::before {
-      content: '';
-      position: absolute;
-      left: 10px;
-      bottom: 0;
+      left: 9%;
+      bottom: 22px;
       width: 44px;
-      height: 10px;
-      border-radius: 999px;
-      background: white;
-      box-shadow: 0 0 16px rgba(255,255,255,.26);
+      height: 118px;
     }
 
-    .surfer::after {
-      content: '';
+    .surfer-figure .head {
       position: absolute;
-      left: 28px;
-      bottom: 8px;
+      left: 14px;
+      top: 0;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #2d3436;
+      border-radius: 50%;
+      background: transparent;
+    }
+
+    .surfer-figure .torso {
+      position: absolute;
+      left: 18px;
+      top: 16px;
       width: 8px;
-      height: 34px;
-      background: #0c1117;
-      border-radius: 999px;
-      box-shadow: -10px 10px 0 #0c1117, 8px 12px 0 #0c1117, 7px -8px 0 #0c1117;
+      height: 44px;
+      background: #e9e2d7;
+      border: 2px solid #2d3436;
+      border-radius: 7px;
+    }
+
+    .surfer-figure .arm {
+      position: absolute;
+      top: 28px;
+      width: 16px;
+      height: 2px;
+      background: #2d3436;
+      transform-origin: right center;
+    }
+
+    .surfer-figure .arm.left {
+      left: 4px;
+      transform: rotate(22deg);
+    }
+
+    .surfer-figure .arm.right {
+      left: 24px;
+      transform: rotate(-22deg);
+    }
+
+    .surfer-figure .leg {
+      position: absolute;
+      top: 60px;
+      width: 2px;
+      height: 42px;
+      background: #2d3436;
+    }
+
+    .surfer-figure .leg.left {
+      left: 17px;
+      transform: rotate(4deg);
+    }
+
+    .surfer-figure .leg.right {
+      left: 27px;
+      transform: rotate(-4deg);
+    }
+
+    .surfer-figure .boardshorts {
+      position: absolute;
+      left: 12px;
+      top: 46px;
+      width: 20px;
+      height: 30px;
+      background: #42b6f5;
+      border: 2px solid #2d3436;
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+    }
+
+    .wave-face {
+      position: absolute;
+      right: 0;
+      bottom: 16px;
+      width: 54%;
+      height: var(--wave-shape-height, 154px);
+      background: #7fd3f7;
+      clip-path: polygon(0% 92%, 12% 91%, 24% 88%, 37% 80%, 48% 63%, 58% 34%, 66% 12%, 72% 2%, 76% 7%, 74% 18%, 69% 29%, 64% 40%, 60% 51%, 57% 65%, 54% 76%, 46% 84%, 35% 89%, 20% 93%, 0% 96%, 100% 100%, 0% 100%);
+      border-left: 2px solid #2d3436;
+      border-top: 2px solid #2d3436;
+    }
+
+    .wave-lip {
+      position: absolute;
+      right: 16.5%;
+      bottom: calc(var(--wave-shape-height, 154px) + 4px);
+      width: 42px;
+      height: 22px;
+      border-top: 2px solid #2d3436;
+      border-right: 2px solid #2d3436;
+      border-radius: 0 22px 0 0;
+      transform: rotate(22deg);
+    }
+
+    .wave-outline {
+      position: absolute;
+      right: 0;
+      bottom: 16px;
+      width: 54%;
+      height: var(--wave-shape-height, 154px);
+      pointer-events: none;
+    }
+
+    .height-labels {
+      position: absolute;
+      right: 8px;
+      top: 14px;
+      bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: #2d3436;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
     }
 
     .hero-stats {
@@ -587,12 +661,31 @@
           </div>
 
           <div class="ocean" id="ocean">
-            <div class="sun"></div>
-            <div class="wave-back"></div>
-            <div class="wave-mid"></div>
-            <div class="foam"></div>
-            <div class="wave-front"></div>
-            <div class="surfer"></div>
+            <div class="wave-compare-wrap">
+              <div class="shore-slope"></div>
+              <div class="height-guides" id="heightGuides"></div>
+              <div class="surfer-figure">
+                <div class="head"></div>
+                <div class="torso"></div>
+                <div class="arm left"></div>
+                <div class="arm right"></div>
+                <div class="leg left"></div>
+                <div class="leg right"></div>
+                <div class="boardshorts"></div>
+              </div>
+              <div class="wave-outline" id="waveOutline"></div>
+              <div class="wave-face"></div>
+              <div class="wave-lip"></div>
+              <div class="height-labels">
+                <span>頭</span>
+                <span>肩</span>
+                <span>胸</span>
+                <span>腹</span>
+                <span>腰</span>
+                <span>膝</span>
+                <span>すね</span>
+              </div>
+            </div>
           </div>
 
           <div class="hero-stats">
@@ -848,6 +941,7 @@
     let selectedBoardId = ownedBoards[0].id;
 
     const el = {
+      heightGuides: document.getElementById('heightGuides'),
       headline: document.getElementById('headline'),
       summary: document.getElementById('summary'),
       score: document.getElementById('score'),
@@ -941,8 +1035,13 @@
       el.currentCall.textContent = `おすすめ基準: ${scenario.bestTime}`;
       el.spotNote.textContent = scenario.spotNote;
 
-      el.ocean.style.setProperty('--wave-h', scenario.waveHeightPx);
-      el.ocean.style.setProperty('--surfer-x', scenario.surferX);
+      el.ocean.style.setProperty('--wave-shape-height', scenario.waveHeightPx);
+
+      const guideCount = 7;
+      el.heightGuides.innerHTML = Array.from({ length: guideCount }, (_, i) => {
+        const top = 6 + i * 13.8;
+        return `<div class="guide-line" style="top:${top}%"></div>`;
+      }).join('');
 
       el.forecastGrid.innerHTML = scenario.timeBands.map(item => `
         <div class="time-card ${item.best ? 'best' : ''}">
