@@ -1,97 +1,984 @@
-<!DOCTYPE html>
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+国会議員サイト証明書ダッシュボード
+- 衆議院・参議院の現職議員を公式サイトから取得
+- 各議員の外部Webサイトを Wikidata / Wikipedia から取得
+- HTTPS 証明書の Subject / Issuer を確認
+- GlobalSign の「国会議員向け証明書（O=所属政党名）」らしきものかを判定
+- GlobalSign サイトシールの掲載有無を簡易検知
+- 1ページで集計表示、更新ボタンで再取得
+
+実行:
+  pip install flask requests beautifulsoup4
+  python app.py
+  -> http://127.0.0.1:5000/
+
+注意:
+- Wikipedia / Wikidata 側の記載がない議員は公式サイトURLが取れないことがあります
+- 「国会議員向け証明書」の判定は、Issuer に GlobalSign 系文字列があり、
+  Subject の O が政党名と一致または近い場合のヒューリスティックです
+- サイトシール検知も HTML 内の script / img / text をベースにした簡易判定です
+"""
+
+from __future__ import annotations
+
+import concurrent.futures
+import datetime as dt
+import json
+import re
+import socket
+import ssl
+import threading
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+from urllib.parse import urljoin, urlparse
+
+import requests
+from bs4 import BeautifulSoup
+from flask import Flask, jsonify, render_template_string
+
+APP_NAME = "国会議員サイト証明書ダッシュボード"
+USER_AGENT = "DietCertDashboard/1.0 (+internal use)"
+REQUEST_TIMEOUT = 15
+MAX_WORKERS = 20
+CACHE_FILE = Path("diet_scan_cache.json")
+
+# 党名の正規化マップ。必要に応じて追加してください。
+PARTY_NORMALIZATION = {
+    "自民": "自由民主党",
+    "自由民主": "自由民主党",
+    "自由民主党": "自由民主党",
+    "立民": "立憲民主党",
+    "立憲": "立憲民主党",
+    "立憲民主": "立憲民主党",
+    "立憲民主党": "立憲民主党",
+    "維新": "日本維新の会",
+    "日本維新": "日本維新の会",
+    "日本維新の会": "日本維新の会",
+    "公明": "公明党",
+    "公明党": "公明党",
+    "国民": "国民民主党",
+    "国民民主": "国民民主党",
+    "国民民主党": "国民民主党",
+    "共産": "日本共産党",
+    "日本共産": "日本共産党",
+    "日本共産党": "日本共産党",
+    "れいわ": "れいわ新選組",
+    "れいわ新選組": "れいわ新選組",
+    "参政": "参政党",
+    "参政党": "参政党",
+    "社民": "社会民主党",
+    "社会民主党": "社会民主党",
+    "保守": "日本保守党",
+    "日本保守党": "日本保守党",
+    "沖縄の風": "沖縄の風",
+    "無所属": "無所属",
+    "無": "無所属",
+}
+
+GS_KEYWORDS = [
+    "globalsign",
+    "global sign",
+    "gmo globalsign",
+]
+
+SITE_SEAL_PATTERNS = [
+    r"globalsign",
+    r"siteseal",
+    r"sslpr",
+    r"secure site seal",
+    r"実在証明・盗聴対策シール",
+]
+
+HEADERS = {"User-Agent": USER_AGENT}
+session = requests.Session()
+session.headers.update(HEADERS)
+
+app = Flask(__name__)
+scan_lock = threading.Lock()
+scan_state = {"running": False}
+
+
+@dataclass
+class MemberRecord:
+    chamber: str
+    name: str
+    party: str
+    official_url: Optional[str]
+    source_url: Optional[str]
+
+
+@dataclass
+class ScanResult:
+    chamber: str
+    name: str
+    party: str
+    official_url: Optional[str]
+    source_url: Optional[str]
+    final_url: Optional[str]
+    status: str
+    http_status: Optional[int]
+    cert_subject_cn: Optional[str]
+    cert_subject_o: Optional[str]
+    cert_issuer_o: Optional[str]
+    cert_issuer_cn: Optional[str]
+    is_https: bool
+    is_gs: bool
+    is_gs_legislator_cert: bool
+    site_seal_found: bool
+    notes: List[str]
+
+
+# ---------- 共通 ----------
+def now_iso() -> str:
+    return dt.datetime.now().isoformat(timespec="seconds")
+
+
+def normalize_party(value: str) -> str:
+    if not value:
+        return ""
+    v = re.sub(r"\s+", "", value)
+    # 無所属/立憲民主・無所属 のような表記は、先頭側の代表政党を使う
+    v = re.sub(r"[／/・].*$", "", v)
+    return PARTY_NORMALIZATION.get(v, value.strip())
+
+
+def remove_honorific(name: str) -> str:
+    return re.sub(r"[君氏　 ]+$", "", name).replace("　", " ").strip()
+
+
+def clean_url(url: str) -> Optional[str]:
+    if not url:
+        return None
+    url = url.strip()
+    if url.startswith("//"):
+        url = "https:" + url
+    if not re.match(r"^https?://", url, re.I):
+        url = "https://" + url
+    parsed = urlparse(url)
+    if not parsed.netloc:
+        return None
+    return url
+
+
+def fetch_text(url: str) -> Optional[str]:
+    try:
+        r = session.get(url, timeout=REQUEST_TIMEOUT)
+        r.raise_for_status()
+        r.encoding = r.apparent_encoding
+        return r.text
+    except Exception:
+        return None
+
+
+# ---------- 衆議院・参議院の現職議員取得 ----------
+def get_shugiin_members() -> List[MemberRecord]:
+    """
+    衆議院の50音順一覧(1giin.htm〜)を順番にたどって取得
+    """
+    members: List[MemberRecord] = []
+    base_urls = [
+        "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/1giin.htm",
+        "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/2giin.htm",
+        "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/3giin.htm",
+        "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/4giin.htm",
+        "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/5giin.htm",
+        "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/6giin.htm",
+    ]
+    pattern = re.compile(r"([^\s,]+(?:\s+[^\s,]+)*)君,\s*[^.。]*\.\s*([^\s<]+)")
+    for url in base_urls:
+        text = fetch_text(url)
+        if not text:
+            continue
+        for line in text.splitlines():
+            m = pattern.search(line)
+            if not m:
+                continue
+            name = remove_honorific(m.group(1))
+            party_abbrev = m.group(2).strip()
+            party = normalize_party(party_abbrev)
+            if name:
+                members.append(
+                    MemberRecord(
+                        chamber="衆議院",
+                        name=name,
+                        party=party,
+                        official_url=None,
+                        source_url=url,
+                    )
+                )
+    # 重複除去
+    unique = {}
+    for m in members:
+        unique[(m.chamber, m.name)] = m
+    return list(unique.values())
+
+
+def get_sangiin_members() -> List[MemberRecord]:
+    """
+    参議院の議員一覧（50音順）ページをHTML解析
+    """
+    url = "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/current/giin.htm"
+    html = fetch_text(url)
+    members: List[MemberRecord] = []
+    if not html:
+        return members
+
+    soup = BeautifulSoup(html, "html.parser")
+    text = soup.get_text("\n")
+    lines = [re.sub(r"\s+", " ", x).strip() for x in text.splitlines()]
+    lines = [x for x in lines if x]
+
+    # ページの構造変化に比較的強いように、名前 + 会派の並びをざっくり拾う
+    # 例: "浜野 喜史" の近くに "国民民主党・新緑風会"
+    party_candidates = sorted(set(PARTY_NORMALIZATION.values()), key=len, reverse=True)
+
+    for i, line in enumerate(lines):
+        if not re.search(r"[一-龥ぁ-んァ-ン]", line):
+            continue
+        if len(line) > 30:
+            continue
+        if line in {"議員一覧（50音順）", "今国会情報", "ライブラリー"}:
+            continue
+        # 漢字2語程度を名前候補に
+        if re.fullmatch(r"[一-龥々〆ヵヶぁ-んァ-ンー]+\s?[一-龥々〆ヵヶぁ-んァ-ンー]+", line):
+            party = ""
+            window = " ".join(lines[i + 1 : i + 6])
+            for p in party_candidates:
+                if p in window:
+                    party = p
+                    break
+            if party:
+                members.append(
+                    MemberRecord(
+                        chamber="参議院",
+                        name=line.strip(),
+                        party=party,
+                        official_url=None,
+                        source_url=url,
+                    )
+                )
+
+    unique = {}
+    for m in members:
+        unique[(m.chamber, m.name)] = m
+    return list(unique.values())
+
+
+# ---------- Wikipedia / Wikidata から公式サイト取得 ----------
+def search_wikipedia_page(name: str, chamber: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Wikipedia の検索APIで該当ページを探す
+    """
+    candidates = [
+        f"{name} (政治家)",
+        f"{name} {chamber}",
+        f"{name}",
+    ]
+    api = "https://ja.wikipedia.org/w/api.php"
+    for query in candidates:
+        try:
+            r = session.get(
+                api,
+                params={
+                    "action": "query",
+                    "list": "search",
+                    "format": "json",
+                    "srsearch": query,
+                    "srlimit": 5,
+                },
+                timeout=REQUEST_TIMEOUT,
+            )
+            r.raise_for_status()
+            data = r.json()
+        except Exception:
+            continue
+
+        for item in data.get("query", {}).get("search", []):
+            title = item.get("title")
+            if not title:
+                continue
+            # 国会議員本人ページっぽいものを優先
+            if name.replace(" ", "") in title.replace(" ", "") or title.startswith(name):
+                page_url = "https://ja.wikipedia.org/wiki/" + requests.utils.quote(title.replace(" ", "_"))
+                return title, page_url
+    return None, None
+
+
+def get_wikidata_id_from_title(title: str) -> Optional[str]:
+    api = "https://ja.wikipedia.org/w/api.php"
+    try:
+        r = session.get(
+            api,
+            params={
+                "action": "query",
+                "prop": "pageprops",
+                "titles": title,
+                "format": "json",
+            },
+            timeout=REQUEST_TIMEOUT,
+        )
+        r.raise_for_status()
+        data = r.json()
+        pages = data.get("query", {}).get("pages", {})
+        for page in pages.values():
+            wikibase_item = page.get("pageprops", {}).get("wikibase_item")
+            if wikibase_item:
+                return wikibase_item
+    except Exception:
+        return None
+    return None
+
+
+def get_official_website_from_wikidata(qid: str) -> Optional[str]:
+    api = f"https://www.wikidata.org/wiki/Special:EntityData/{qid}.json"
+    try:
+        r = session.get(api, timeout=REQUEST_TIMEOUT)
+        r.raise_for_status()
+        data = r.json()
+    except Exception:
+        return None
+
+    claims = data.get("entities", {}).get(qid, {}).get("claims", {})
+    p856 = claims.get("P856", [])
+    for claim in p856:
+        try:
+            url = claim["mainsnak"]["datavalue"]["value"]
+            cleaned = clean_url(url)
+            if cleaned:
+                return cleaned
+        except Exception:
+            continue
+    return None
+
+
+def get_official_website_from_wikipedia_html(page_url: str) -> Optional[str]:
+    """
+    Wikipedia本文の infobox / 外部リンクから候補を拾う
+    """
+    html = fetch_text(page_url)
+    if not html:
+        return None
+    soup = BeautifulSoup(html, "html.parser")
+
+    # infobox 内の外部リンクを優先
+    for table in soup.select("table.infobox, table.infobox.vevent"):
+        for a in table.select("a[href]"):
+            href = a.get("href", "")
+            if href.startswith("http"):
+                return clean_url(href)
+
+    # 外部リンク節を雑に探索
+    for a in soup.select("a.external"):
+        href = a.get("href", "")
+        if href.startswith("http"):
+            return clean_url(href)
+    return None
+
+
+def enrich_member_with_site(member: MemberRecord) -> MemberRecord:
+    title, page_url = search_wikipedia_page(member.name, member.chamber)
+    if not title:
+        return member
+
+    site = None
+    qid = get_wikidata_id_from_title(title)
+    if qid:
+        site = get_official_website_from_wikidata(qid)
+
+    if not site and page_url:
+        site = get_official_website_from_wikipedia_html(page_url)
+
+    return MemberRecord(
+        chamber=member.chamber,
+        name=member.name,
+        party=member.party,
+        official_url=site,
+        source_url=page_url or member.source_url,
+    )
+
+
+# ---------- 証明書・サイトシール判定 ----------
+def extract_cert(hostname: str, port: int = 443) -> Optional[dict]:
+    context = ssl.create_default_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+
+    try:
+        with socket.create_connection((hostname, port), timeout=REQUEST_TIMEOUT) as sock:
+            with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                return ssock.getpeercert()
+    except Exception:
+        return None
+
+
+def parse_name_tuple(name_tuple: Tuple[Tuple[Tuple[str, str], ...], ...]) -> Dict[str, str]:
+    result: Dict[str, str] = {}
+    for rdn in name_tuple:
+        for key, value in rdn:
+            result[key] = value
+    return result
+
+
+def contains_gs(subject_or_issuer: str) -> bool:
+    s = (subject_or_issuer or "").lower()
+    return any(k in s for k in GS_KEYWORDS)
+
+
+def is_probable_gs_legislator_cert(party: str, subject_o: Optional[str], issuer_o: Optional[str], issuer_cn: Optional[str]) -> bool:
+    """
+    ざっくり判定:
+    - 発行者情報に GlobalSign 系文字列が含まれる
+    - Subject O が議員の所属政党名と一致 or かなり近い
+    """
+    issuer_text = " ".join([issuer_o or "", issuer_cn or ""])
+    if not contains_gs(issuer_text):
+        return False
+
+    normalized_party = normalize_party(party)
+    subj = (subject_o or "").strip()
+    if not subj:
+        return False
+
+    subj_n = normalize_party(subj)
+    if subj_n == normalized_party:
+        return True
+
+    # 部分一致
+    if normalized_party and (normalized_party in subj or subj in normalized_party):
+        return True
+
+    return False
+
+
+def detect_site_seal(html: str) -> bool:
+    if not html:
+        return False
+    hay = html.lower()
+    return any(re.search(p, hay, re.I) for p in SITE_SEAL_PATTERNS)
+
+
+def scan_member_site(member: MemberRecord) -> ScanResult:
+    notes: List[str] = []
+    if not member.official_url:
+        return ScanResult(
+            chamber=member.chamber,
+            name=member.name,
+            party=member.party,
+            official_url=None,
+            source_url=member.source_url,
+            final_url=None,
+            status="site_not_found",
+            http_status=None,
+            cert_subject_cn=None,
+            cert_subject_o=None,
+            cert_issuer_o=None,
+            cert_issuer_cn=None,
+            is_https=False,
+            is_gs=False,
+            is_gs_legislator_cert=False,
+            site_seal_found=False,
+            notes=["公式サイトURLを取得できませんでした"],
+        )
+
+    url = member.official_url
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    if not hostname:
+        return ScanResult(
+            chamber=member.chamber,
+            name=member.name,
+            party=member.party,
+            official_url=member.official_url,
+            source_url=member.source_url,
+            final_url=None,
+            status="invalid_url",
+            http_status=None,
+            cert_subject_cn=None,
+            cert_subject_o=None,
+            cert_issuer_o=None,
+            cert_issuer_cn=None,
+            is_https=False,
+            is_gs=False,
+            is_gs_legislator_cert=False,
+            site_seal_found=False,
+            notes=["URLが不正です"],
+        )
+
+    cert = None
+    cert_subject_cn = cert_subject_o = cert_issuer_o = cert_issuer_cn = None
+    is_https = parsed.scheme.lower() == "https"
+
+    if is_https:
+        cert = extract_cert(hostname, parsed.port or 443)
+        if cert:
+            subject = parse_name_tuple(cert.get("subject", ()))
+            issuer = parse_name_tuple(cert.get("issuer", ()))
+            cert_subject_cn = subject.get("commonName")
+            cert_subject_o = subject.get("organizationName")
+            cert_issuer_o = issuer.get("organizationName")
+            cert_issuer_cn = issuer.get("commonName")
+        else:
+            notes.append("証明書の取得に失敗しました")
+
+    try:
+        r = session.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+        final_url = r.url
+        http_status = r.status_code
+        html = r.text or ""
+        seal = detect_site_seal(html)
+        # HTTPからHTTPSへ飛ぶケース
+        if not is_https and final_url.lower().startswith("https://"):
+            is_https = True
+            final_host = urlparse(final_url).hostname
+            if final_host:
+                cert = extract_cert(final_host, 443)
+                if cert:
+                    subject = parse_name_tuple(cert.get("subject", ()))
+                    issuer = parse_name_tuple(cert.get("issuer", ()))
+                    cert_subject_cn = subject.get("commonName")
+                    cert_subject_o = subject.get("organizationName")
+                    cert_issuer_o = issuer.get("organizationName")
+                    cert_issuer_cn = issuer.get("commonName")
+    except Exception as e:
+        return ScanResult(
+            chamber=member.chamber,
+            name=member.name,
+            party=member.party,
+            official_url=member.official_url,
+            source_url=member.source_url,
+            final_url=None,
+            status="request_error",
+            http_status=None,
+            cert_subject_cn=cert_subject_cn,
+            cert_subject_o=cert_subject_o,
+            cert_issuer_o=cert_issuer_o,
+            cert_issuer_cn=cert_issuer_cn,
+            is_https=is_https,
+            is_gs=contains_gs(" ".join([cert_issuer_o or "", cert_issuer_cn or ""])),
+            is_gs_legislator_cert=is_probable_gs_legislator_cert(member.party, cert_subject_o, cert_issuer_o, cert_issuer_cn),
+            site_seal_found=False,
+            notes=notes + [f"HTTP取得失敗: {e}"],
+        )
+
+    is_gs = contains_gs(" ".join([cert_issuer_o or "", cert_issuer_cn or ""]))
+    is_leg_cert = is_probable_gs_legislator_cert(member.party, cert_subject_o, cert_issuer_o, cert_issuer_cn)
+
+    return ScanResult(
+        chamber=member.chamber,
+        name=member.name,
+        party=member.party,
+        official_url=member.official_url,
+        source_url=member.source_url,
+        final_url=final_url,
+        status="ok",
+        http_status=http_status,
+        cert_subject_cn=cert_subject_cn,
+        cert_subject_o=cert_subject_o,
+        cert_issuer_o=cert_issuer_o,
+        cert_issuer_cn=cert_issuer_cn,
+        is_https=is_https,
+        is_gs=is_gs,
+        is_gs_legislator_cert=is_leg_cert,
+        site_seal_found=seal,
+        notes=notes,
+    )
+
+
+# ---------- 集計 ----------
+def summarize(results: List[ScanResult]) -> dict:
+    total = len(results)
+    with_site = sum(1 for r in results if r.official_url)
+    https_count = sum(1 for r in results if r.is_https)
+    gs_count = sum(1 for r in results if r.is_gs)
+    gs_leg_count = sum(1 for r in results if r.is_gs_legislator_cert)
+    seal_count = sum(1 for r in results if r.site_seal_found)
+
+    def pct(n: int, d: int) -> float:
+        return round((n / d * 100) if d else 0.0, 1)
+
+    by_party: Dict[str, dict] = {}
+    for r in results:
+        key = r.party or "不明"
+        by_party.setdefault(
+            key,
+            {"party": key, "total": 0, "with_site": 0, "gs_leg": 0, "gs": 0, "seal": 0},
+        )
+        by_party[key]["total"] += 1
+        if r.official_url:
+            by_party[key]["with_site"] += 1
+        if r.is_gs_legislator_cert:
+            by_party[key]["gs_leg"] += 1
+        if r.is_gs:
+            by_party[key]["gs"] += 1
+        if r.site_seal_found:
+            by_party[key]["seal"] += 1
+
+    by_party_list = sorted(by_party.values(), key=lambda x: (-x["with_site"], x["party"]))
+
+    return {
+        "generated_at": now_iso(),
+        "total_members": total,
+        "with_site": with_site,
+        "https_count": https_count,
+        "gs_count": gs_count,
+        "gs_legislator_count": gs_leg_count,
+        "site_seal_count": seal_count,
+        "gs_share_all_members": pct(gs_leg_count, total),
+        "gs_share_sites_only": pct(gs_leg_count, with_site),
+        "site_seal_share_sites_only": pct(seal_count, with_site),
+        "by_party": by_party_list,
+    }
+
+
+def load_cache() -> dict:
+    if CACHE_FILE.exists():
+        return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+    return {"generated_at": None, "summary": {}, "results": []}
+
+
+def save_cache(summary: dict, results: List[ScanResult]) -> None:
+    payload = {
+        "generated_at": now_iso(),
+        "summary": summary,
+        "results": [asdict(r) for r in results],
+    }
+    CACHE_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def run_full_scan() -> dict:
+    # 1) 現職議員一覧
+    members = get_shugiin_members() + get_sangiin_members()
+
+    # 2) Wikipedia/Wikidata で公式サイト付与
+    enriched: List[MemberRecord] = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+        futures = [ex.submit(enrich_member_with_site, m) for m in members]
+        for f in concurrent.futures.as_completed(futures):
+            enriched.append(f.result())
+
+    enriched.sort(key=lambda x: (x.chamber, x.name))
+
+    # 3) サイト走査
+    results: List[ScanResult] = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+        futures = [ex.submit(scan_member_site, m) for m in enriched]
+        for f in concurrent.futures.as_completed(futures):
+            try:
+                results.append(f.result())
+            except Exception as e:
+                results.append(
+                    ScanResult(
+                        chamber="不明",
+                        name="不明",
+                        party="不明",
+                        official_url=None,
+                        source_url=None,
+                        final_url=None,
+                        status="internal_error",
+                        http_status=None,
+                        cert_subject_cn=None,
+                        cert_subject_o=None,
+                        cert_issuer_o=None,
+                        cert_issuer_cn=None,
+                        is_https=False,
+                        is_gs=False,
+                        is_gs_legislator_cert=False,
+                        site_seal_found=False,
+                        notes=[str(e)],
+                    )
+                )
+
+    results.sort(key=lambda x: (x.chamber, x.name))
+    summary = summarize(results)
+    save_cache(summary, results)
+    return {"generated_at": now_iso(), "summary": summary, "results": [asdict(r) for r in results]}
+
+
+# ---------- Web UI ----------
+HTML = r"""
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>Dai Surf Forecast</title>
-
-<style>
-body {
-  font-family: Arial;
-  text-align: center;
-  background: linear-gradient(#00c6ff, #0072ff);
-  color: white;
-  padding: 40px;
-}
-
-.card {
-  background: rgba(0,0,0,0.3);
-  padding: 30px;
-  border-radius: 15px;
-  display: inline-block;
-}
-
-button {
-  padding: 15px 25px;
-  font-size: 18px;
-  border: none;
-  border-radius: 10px;
-  background: #ffcc00;
-  cursor: pointer;
-  margin-top: 20px;
-}
-
-.wave-container {
-  margin-top: 40px;
-  height: 200px;
-  overflow: hidden;
-  position: relative;
-}
-
-.wave {
-  position: absolute;
-  width: 200%;
-  height: 100%;
-  background: rgba(255,255,255,0.5);
-  border-radius: 40%;
-}
-
-@keyframes waveMove {
-  0% { transform: translateX(0) translateY(0); }
-  50% { transform: translateX(-25%) translateY(-20px); }
-  100% { transform: translateX(-50%) translateY(0); }
-}
-
-.small { height: 50px; }
-.medium { height: 100px; }
-.big { height: 160px; }
-
-</style>
+  <meta charset="utf-8">
+  <title>国会議員サイト証明書ダッシュボード</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#151b2f;
+      --line:#28324f;
+      --text:#eef3ff;
+      --muted:#aeb9d6;
+      --accent:#4da3ff;
+      --ok:#1fbf75;
+      --warn:#ffb020;
+      --bad:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(180deg,#0b1020,#111a33 40%,#0b1020);
+      color:var(--text);
+    }
+    .wrap{max-width:1400px;margin:0 auto;padding:24px}
+    .hero{
+      display:flex;gap:16px;justify-content:space-between;align-items:center;
+      flex-wrap:wrap;margin-bottom:20px
+    }
+    .title{font-size:28px;font-weight:700}
+    .sub{color:var(--muted);margin-top:8px;line-height:1.6}
+    .btn{
+      background:var(--accent);color:white;border:none;border-radius:10px;
+      padding:12px 18px;font-weight:700;cursor:pointer
+    }
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .grid{
+      display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin:18px 0 22px
+    }
+    .card{
+      background:rgba(21,27,47,.9);
+      border:1px solid var(--line);
+      border-radius:16px;padding:16px;
+      box-shadow:0 6px 22px rgba(0,0,0,.22)
+    }
+    .metric{font-size:30px;font-weight:800;margin-top:6px}
+    .label{color:var(--muted);font-size:13px}
+    .section-title{font-size:20px;font-weight:700;margin:28px 0 12px}
+    table{
+      width:100%;border-collapse:collapse;background:rgba(21,27,47,.9);
+      border:1px solid var(--line);border-radius:16px;overflow:hidden
+    }
+    th,td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+    th{background:#1a2240;text-align:left;position:sticky;top:0}
+    tr:hover td{background:rgba(255,255,255,.03)}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700}
+    .ok{background:rgba(31,191,117,.15);color:#6ff0aa}
+    .warn{background:rgba(255,176,32,.14);color:#ffd071}
+    .bad{background:rgba(255,107,107,.14);color:#ff9f9f}
+    .muted{color:var(--muted)}
+    .toolbar{
+      display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0
+    }
+    input,select{
+      background:#121a30;border:1px solid var(--line);color:var(--text);
+      padding:10px 12px;border-radius:10px
+    }
+    a{color:#92c5ff}
+    .small{font-size:12px;color:var(--muted)}
+    @media (max-width:1100px){ .grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+    @media (max-width:640px){ .grid{grid-template-columns:1fr;} .title{font-size:22px} }
+  </style>
 </head>
-
 <body>
-
-<div class="card">
-  <h1>🏄 Dai Surf Forecast</h1>
-  <p>Pererenan</p>
-
-  <button onclick="showWave()">今日の波予想</button>
-
-  <div class="wave-container">
-    <div id="wave" class="wave"></div>
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <div class="title">国会議員サイト証明書ダッシュボード</div>
+      <div class="sub">
+        Wikipedia / Wikidata から議員個人サイト候補を取得し、HTTPS証明書とGlobalSignサイトシールを集計します。<br>
+        「GS国会議員用」は <b>Issuer が GlobalSign 系</b> かつ <b>証明書 Subject の O が所属政党名に一致/近似</b> の簡易判定です。
+      </div>
+      <div class="small" id="generatedAt">最終更新: -</div>
+    </div>
+    <div>
+      <button class="btn" id="refreshBtn">更新して再集計</button>
+    </div>
   </div>
 
-  <p id="result"></p>
+  <div class="grid" id="summaryGrid"></div>
+
+  <div class="section-title">党別集計</div>
+  <div id="partyTable"></div>
+
+  <div class="section-title">議員別明細</div>
+  <div class="toolbar">
+    <input id="searchBox" placeholder="名前・党名で検索">
+    <select id="filterBox">
+      <option value="all">すべて</option>
+      <option value="gs_leg">GS国会議員用のみ</option>
+      <option value="gs_any">GlobalSign証明書のみ</option>
+      <option value="seal">サイトシールあり</option>
+      <option value="no_site">サイト未取得</option>
+    </select>
+  </div>
+  <div id="detailTable"></div>
 </div>
 
 <script>
-function showWave() {
-  const wave = document.getElementById("wave");
-  const result = document.getElementById("result");
+let DATA = {summary:{}, results:[]};
 
-  const waves = [
-    {size: "小波", class: "small"},
-    {size: "胸〜肩", class: "medium"},
-    {size: "頭オーバー", class: "big"}
-  ];
+function pct(n){ return `${n}%`; }
 
-  const random = waves[Math.floor(Math.random() * waves.length)];
-
-  wave.className = "wave " + random.class;
-  wave.style.animation = "waveMove 3s infinite linear";
-
-  result.innerHTML = "今日の波：" + random.size;
+function pill(flag, okText="Yes", noText="No"){
+  return flag
+    ? `<span class="pill ok">${okText}</span>`
+    : `<span class="pill bad">${noText}</span>`;
 }
-</script>
 
+function renderSummary(s){
+  const items = [
+    ["現職議員総数", s.total_members],
+    ["サイト取得数", `${s.with_site}`],
+    ["HTTPSサイト数", `${s.https_count}`],
+    ["GS証明書数", `${s.gs_count}`],
+    ["GS国会議員用数", `${s.gs_legislator_count}`],
+    ["GS国会議員用シェア(全議員)", pct(s.gs_share_all_members)],
+    ["GS国会議員用シェア(サイト取得母数)", pct(s.gs_share_sites_only)],
+    ["サイトシール数", `${s.site_seal_count}`],
+    ["サイトシールシェア(サイト取得母数)", pct(s.site_seal_share_sites_only)],
+  ];
+  const html = items.map(([label,val]) => `
+    <div class="card">
+      <div class="label">${label}</div>
+      <div class="metric">${val}</div>
+    </div>
+  `).join("");
+  document.getElementById("summaryGrid").innerHTML = html;
+}
+
+function renderPartyTable(rows){
+  let html = `<table><thead><tr>
+    <th>党名</th><th>総数</th><th>サイト取得</th><th>GS国会議員用</th><th>GS</th><th>サイトシール</th>
+  </tr></thead><tbody>`;
+  for(const r of rows){
+    html += `<tr>
+      <td>${r.party}</td>
+      <td>${r.total}</td>
+      <td>${r.with_site}</td>
+      <td>${r.gs_leg}</td>
+      <td>${r.gs}</td>
+      <td>${r.seal}</td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  document.getElementById("partyTable").innerHTML = html;
+}
+
+function filteredResults(){
+  const q = document.getElementById("searchBox").value.trim().toLowerCase();
+  const filter = document.getElementById("filterBox").value;
+  return DATA.results.filter(r => {
+    const hit = !q || [r.name, r.party, r.chamber, r.cert_subject_o, r.cert_issuer_o].join(" ").toLowerCase().includes(q);
+    if(!hit) return false;
+    if(filter === "gs_leg") return r.is_gs_legislator_cert;
+    if(filter === "gs_any") return r.is_gs;
+    if(filter === "seal") return r.site_seal_found;
+    if(filter === "no_site") return !r.official_url;
+    return true;
+  });
+}
+
+function renderDetailTable(){
+  const rows = filteredResults();
+  let html = `<table><thead><tr>
+    <th>院</th><th>氏名</th><th>党</th><th>サイト</th><th>GS国会議員用</th><th>GS</th><th>サイトシール</th>
+    <th>Subject O</th><th>Issuer</th><th>備考</th>
+  </tr></thead><tbody>`;
+  for(const r of rows){
+    const site = r.official_url ? `<a href="${r.official_url}" target="_blank" rel="noopener">公式サイト</a>` : `<span class="muted">-</span>`;
+    const issuer = [r.cert_issuer_o, r.cert_issuer_cn].filter(Boolean).join(" / ") || "-";
+    html += `<tr>
+      <td>${r.chamber}</td>
+      <td>${r.name}</td>
+      <td>${r.party}</td>
+      <td>${site}</td>
+      <td>${pill(r.is_gs_legislator_cert, "該当", "非該当")}</td>
+      <td>${pill(r.is_gs, "GS", "非GS")}</td>
+      <td>${pill(r.site_seal_found, "あり", "なし")}</td>
+      <td>${r.cert_subject_o || "-"}</td>
+      <td>${issuer}</td>
+      <td>${(r.notes || []).join("<br>") || "-"}</td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  document.getElementById("detailTable").innerHTML = html;
+}
+
+async function loadData(){
+  const res = await fetch('/api/data');
+  const data = await res.json();
+  DATA = data;
+  document.getElementById("generatedAt").textContent = `最終更新: ${data.summary.generated_at || data.generated_at || "-"}`;
+  renderSummary(data.summary);
+  renderPartyTable(data.summary.by_party || []);
+  renderDetailTable();
+}
+
+async function refreshData(){
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  btn.textContent = "更新中...";
+  try{
+    const res = await fetch('/api/refresh', {method:'POST'});
+    const data = await res.json();
+    DATA = data;
+    document.getElementById("generatedAt").textContent = `最終更新: ${data.summary.generated_at || data.generated_at || "-"}`;
+    renderSummary(data.summary);
+    renderPartyTable(data.summary.by_party || []);
+    renderDetailTable();
+  }catch(e){
+    alert("更新に失敗しました: " + e);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "更新して再集計";
+  }
+}
+
+document.getElementById("refreshBtn").addEventListener("click", refreshData);
+document.getElementById("searchBox").addEventListener("input", renderDetailTable);
+document.getElementById("filterBox").addEventListener("change", renderDetailTable);
+loadData();
+</script>
 </body>
 </html>
+"""
+
+
+@app.route("/")
+def index():
+    return render_template_string(HTML)
+
+
+@app.get("/api/data")
+def api_data():
+    return jsonify(load_cache())
+
+
+@app.post("/api/refresh")
+def api_refresh():
+    if scan_state["running"]:
+        return jsonify({"error": "scan_running"}), 409
+    with scan_lock:
+        scan_state["running"] = True
+        try:
+            data = run_full_scan()
+            return jsonify(data)
+        finally:
+            scan_state["running"] = False
+
+
+if __name__ == "__main__":
+    if not CACHE_FILE.exists():
+        # 初回起動時は空データを作成
+        save_cache(
+            {
+                "generated_at": None,
+                "total_members": 0,
+                "with_site": 0,
+                "https_count": 0,
+                "gs_count": 0,
+                "gs_legislator_count": 0,
+                "site_seal_count": 0,
+                "gs_share_all_members": 0,
+                "gs_share_sites_only": 0,
+                "site_seal_share_sites_only": 0,
+                "by_party": [],
+            },
+            [],
+        )
+    app.run(host="0.0.0.0", port=5000, debug=True)
