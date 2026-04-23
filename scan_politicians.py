@@ -475,8 +475,10 @@ def parse_name_tuple(name_tuple) -> Dict[str, str]:
 
 
 def contains_gs(*texts: Optional[str]) -> bool:
+
     joined = " ".join(text or "" for text in texts).lower()
-    return any(keyword in joined for keyword in GS_KEYWORDS)
+
+    return "globalsign" in joined
 
 
 def is_probable_gs_legislator_cert(
