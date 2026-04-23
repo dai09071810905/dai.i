@@ -1,1094 +1,287 @@
-<!DOCTYPE html>
+
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pererenan Surf Forecast Pro</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta charset="utf-8">
+  <title>国会議員サイト証明書ダッシュボード</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root {
-      --bg1: #04101d;
-      --bg2: #0a2238;
-      --panel: rgba(10, 25, 42, 0.82);
-      --panel-soft: rgba(255,255,255,0.04);
-      --line: rgba(255,255,255,0.08);
-      --text: #ecf7ff;
-      --muted: #96b3c8;
-      --accent: #56d6ff;
-      --accent2: #3b82f6;
-      --good: #23d18b;
-      --warn: #ffc857;
-      --danger: #ff6b6b;
-      --radius: 24px;
-      --shadow: 0 24px 60px rgba(0,0,0,.28);
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: 'Inter', Arial, sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at 10% 15%, rgba(86,214,255,.15), transparent 24%),
-        radial-gradient(circle at 90% 10%, rgba(59,130,246,.16), transparent 20%),
-        linear-gradient(180deg, var(--bg2), var(--bg1));
-      min-height: 100vh;
-    }
-
-    .app {
-      width: min(1440px, calc(100% - 28px));
-      margin: 18px auto 30px;
-    }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-      padding: 16px 18px;
-      background: rgba(6,16,28,.55);
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(12px);
-      margin-bottom: 18px;
-    }
-
-    .title h1 {
-      margin: 0;
-      font-size: clamp(22px, 4vw, 34px);
-      letter-spacing: -.04em;
-    }
-
-    .title p {
-      margin: 6px 0 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .top-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    .pill, .btn, .menu-btn {
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 10px 14px;
-      background: rgba(255,255,255,.05);
-      color: var(--text);
-      font-weight: 600;
-      font-size: 13px;
-    }
-
-    .btn, .menu-btn {
-      cursor: pointer;
-      transition: .2s ease;
-    }
-
-    .btn:hover, .menu-btn:hover {
-      transform: translateY(-1px);
-    }
-
-    .btn.primary {
-      background: linear-gradient(135deg, rgba(86,214,255,.22), rgba(59,130,246,.22));
-    }
-
-    .layout {
-      display: grid;
-      grid-template-columns: 1.4fr .9fr;
-      gap: 18px;
-    }
-
-    .col {
-      display: grid;
-      gap: 18px;
-    }
-
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 22px;
-      backdrop-filter: blur(14px);
-    }
-
-    .card-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-
-    .card-head h2, .card-head h3 {
-      margin: 0;
-      letter-spacing: -.03em;
-    }
-
-    .meta {
-      color: var(--muted);
-      font-size: 13px;
-      margin-top: 4px;
-    }
-
-    .hero {
-      position: relative;
-      overflow: hidden;
-      min-height: 410px;
-      padding: 26px;
-      border-radius: 30px;
-      background: linear-gradient(145deg, rgba(8,24,40,.96), rgba(8,18,30,.78));
-    }
-
-    .hero-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 18px;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      position: relative;
-      z-index: 2;
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.08);
-      font-size: 12px;
-      margin-bottom: 12px;
-      color: #cff2ff;
-    }
-
-    .hero h2 {
-      margin: 0;
-      font-size: clamp(32px, 5vw, 58px);
-      line-height: .95;
-      letter-spacing: -.06em;
-      max-width: 620px;
-    }
-
-    .hero p {
-      margin: 14px 0 0;
-      max-width: 650px;
-      color: var(--muted);
-      line-height: 1.7;
-      font-size: 15px;
-    }
-
-    .score-box {
-      min-width: 165px;
-      text-align: center;
-      border-radius: 24px;
-      padding: 18px;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.08);
-    }
-
-    .score-box .label {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .score-box .score {
-      font-size: 52px;
-      font-weight: 800;
-      letter-spacing: -.06em;
-      margin-top: 6px;
-    }
-
-    .ocean {
-      position: relative;
-      margin-top: 24px;
-      height: 250px;
-      border-radius: 28px;
-      overflow: hidden;
-      background: linear-gradient(180deg, #f2f4f6 0%, #edf2f6 100%);
-      border: 1px solid rgba(255,255,255,.08);
-    }
-
-    .wave-compare-wrap {
-      position: absolute;
-      inset: 0;
-      overflow: hidden;
-    }
-
-    .shore-slope {
-      position: absolute;
-      left: -3%;
-      bottom: -2px;
-      width: 52%;
-      height: 34px;
-      background: linear-gradient(180deg, #cfae67, #a9813b);
-      clip-path: polygon(0 40%, 100% 85%, 100% 100%, 0 100%);
-    }
-
-    .height-guides {
-      position: absolute;
-      left: 14%;
-      right: 9%;
-      top: 18px;
-      bottom: 16px;
-      pointer-events: none;
-    }
-
-    .guide-line {
-      position: absolute;
-      left: 0;
-      right: 0;
-      border-top: 1px dashed rgba(90,100,110,.45);
-    }
-
-    .surfer-figure {
-      position: absolute;
-      left: 9%;
-      bottom: 22px;
-      width: 44px;
-      height: 118px;
-    }
-
-    .surfer-figure .head {
-      position: absolute;
-      left: 14px;
-      top: 0;
-      width: 14px;
-      height: 14px;
-      border: 2px solid #2d3436;
-      border-radius: 50%;
-      background: transparent;
-    }
-
-    .surfer-figure .torso {
-      position: absolute;
-      left: 18px;
-      top: 16px;
-      width: 8px;
-      height: 44px;
-      background: #e9e2d7;
-      border: 2px solid #2d3436;
-      border-radius: 7px;
-    }
-
-    .surfer-figure .arm {
-      position: absolute;
-      top: 28px;
-      width: 16px;
-      height: 2px;
-      background: #2d3436;
-      transform-origin: right center;
-    }
-
-    .surfer-figure .arm.left {
-      left: 4px;
-      transform: rotate(22deg);
-    }
-
-    .surfer-figure .arm.right {
-      left: 24px;
-      transform: rotate(-22deg);
-    }
-
-    .surfer-figure .leg {
-      position: absolute;
-      top: 60px;
-      width: 2px;
-      height: 42px;
-      background: #2d3436;
-    }
-
-    .surfer-figure .leg.left {
-      left: 17px;
-      transform: rotate(4deg);
-    }
-
-    .surfer-figure .leg.right {
-      left: 27px;
-      transform: rotate(-4deg);
-    }
-
-    .surfer-figure .boardshorts {
-      position: absolute;
-      left: 12px;
-      top: 46px;
-      width: 20px;
-      height: 30px;
-      background: #42b6f5;
-      border: 2px solid #2d3436;
-      border-top: none;
-      border-radius: 0 0 6px 6px;
-    }
-
-    .wave-face {
-      position: absolute;
-      right: 0;
-      bottom: 16px;
-      width: 54%;
-      height: var(--wave-shape-height, 154px);
-      background: #7fd3f7;
-      clip-path: polygon(0% 92%, 12% 91%, 24% 88%, 37% 80%, 48% 63%, 58% 34%, 66% 12%, 72% 2%, 76% 7%, 74% 18%, 69% 29%, 64% 40%, 60% 51%, 57% 65%, 54% 76%, 46% 84%, 35% 89%, 20% 93%, 0% 96%, 100% 100%, 0% 100%);
-      border-left: 2px solid #2d3436;
-      border-top: 2px solid #2d3436;
-    }
-
-    .wave-lip {
-      position: absolute;
-      right: 16.5%;
-      bottom: calc(var(--wave-shape-height, 154px) + 4px);
-      width: 42px;
-      height: 22px;
-      border-top: 2px solid #2d3436;
-      border-right: 2px solid #2d3436;
-      border-radius: 0 22px 0 0;
-      transform: rotate(22deg);
-    }
-
-    .wave-outline {
-      position: absolute;
-      right: 0;
-      bottom: 16px;
-      width: 54%;
-      height: var(--wave-shape-height, 154px);
-      pointer-events: none;
-    }
-
-    .height-labels {
-      position: absolute;
-      right: 8px;
-      top: 14px;
-      bottom: 20px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      color: #2d3436;
-      font-size: 12px;
-      font-weight: 600;
-      line-height: 1;
-    }
-
-    .hero-stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-top: 18px;
-    }
-
-    .stat {
-      padding: 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.06);
-    }
-
-    .stat .k {
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
-
-    .stat .v {
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -.04em;
-    }
-
-    .board-menu {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
-
-    .menu-btn.active {
-      background: linear-gradient(135deg, rgba(86,214,255,.22), rgba(59,130,246,.22));
-      border-color: rgba(86,214,255,.28);
-    }
-
-    .forecast-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 12px;
-    }
-
-    .time-card {
-      padding: 16px 12px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.06);
-      text-align: center;
-    }
-
-    .time-card.best {
-      background: linear-gradient(180deg, rgba(86,214,255,.18), rgba(59,130,246,.12));
-      border-color: rgba(86,214,255,.34);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
-    }
-
-    .time-card .t {
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 10px;
-    }
-
-    .time-card .size {
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -.04em;
-      margin-bottom: 6px;
-    }
-
-    .time-card .quality {
-      font-size: 13px;
-      margin-bottom: 6px;
-    }
-
-    .time-card .wind {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .board-reco {
-      display: grid;
-      gap: 12px;
-    }
-
-    .board-reco-item {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 14px;
-      align-items: center;
-      padding: 14px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.06);
-    }
-
-    .icon {
-      width: 42px;
-      height: 42px;
-      display: grid;
-      place-items: center;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(86,214,255,.22), rgba(59,130,246,.2));
-    }
-
-    .board-reco-item strong {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 15px;
-    }
-
-    .board-reco-item p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.55;
-    }
-
-    .tag {
-      padding: 8px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
-      border: 1px solid rgba(255,255,255,.06);
-    }
-
-    .tag.good { background: rgba(35,209,139,.14); color: #8bf0c1; }
-    .tag.info { background: rgba(86,214,255,.14); color: #a8ecff; }
-    .tag.warn { background: rgba(255,200,87,.12); color: #ffe39f; }
-
-    .detail-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .detail {
-      padding: 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.06);
-    }
-
-    .detail .k {
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
-
-    .detail .v {
-      font-size: 28px;
-      font-weight: 800;
-      letter-spacing: -.04em;
-    }
-
-    .detail .s {
-      color: var(--muted);
-      font-size: 13px;
-      margin-top: 6px;
-    }
-
-    .bar {
-      height: 10px;
-      background: rgba(255,255,255,.06);
-      border-radius: 999px;
-      overflow: hidden;
-      margin-top: 14px;
-    }
-
-    .bar span {
-      display: block;
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
-    }
-
-    .session-list { display: grid; gap: 12px; }
-
-    .session-item {
-      padding: 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.06);
-    }
-
-    .session-item strong {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 8px;
-      font-size: 15px;
-    }
-
-    .session-item p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.6;
-      font-size: 13px;
-    }
-
-    .owned-board-card {
-      padding: 18px;
-      border-radius: 20px;
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.06);
-    }
-
-    .owned-board-card strong {
-      display: block;
-      font-size: 16px;
-      margin-bottom: 6px;
-    }
-
-    .owned-board-card p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.55;
-    }
-
-    .spot-note {
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.7;
-    }
-
-    @keyframes drift {
-      from { transform: translateX(0); }
-      to { transform: translateX(-35%); }
-    }
-
-    @keyframes shimmer {
-      0%,100% { opacity: .35; transform: translateX(-12px); }
-      50% { opacity: .95; transform: translateX(12px); }
-    }
-
-    @media (max-width: 1100px) {
-      .layout { grid-template-columns: 1fr; }
-      .hero-stats { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    @media (max-width: 760px) {
-      .app { width: min(100% - 16px, 1440px); }
-      .card, .hero { padding: 18px; }
-      .forecast-grid { grid-template-columns: repeat(2, 1fr); }
-      .hero-stats, .detail-grid { grid-template-columns: 1fr; }
-      .board-reco-item { grid-template-columns: auto 1fr; }
-      .board-reco-item .tag { grid-column: 1 / -1; justify-self: start; }
-    }
+    :root{
+      --bg:#0b1020;
+      --bg2:#0f1730;
+      --card:#151b2f;
+      --line:#2b3758;
+      --text:#eef3ff;
+      --muted:#aeb9d6;
+      --accent:#4da3ff;
+      --ok:#1fbf75;
+      --warn:#ffb020;
+      --bad:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(180deg,var(--bg),var(--bg2) 40%,var(--bg));
+      color:var(--text);
+    }
+    .wrap{max-width:1400px;margin:0 auto;padding:24px}
+    .hero{
+      display:flex;gap:16px;justify-content:space-between;align-items:flex-start;
+      flex-wrap:wrap;margin-bottom:18px
+    }
+    .title{font-size:28px;font-weight:800}
+    .sub{color:var(--muted);margin-top:8px;line-height:1.7;max-width:950px}
+    .small{font-size:12px;color:var(--muted);margin-top:8px}
+    .btn{
+      background:var(--accent);color:white;border:none;border-radius:12px;
+      padding:12px 18px;font-weight:800;cursor:pointer;
+      box-shadow:0 6px 18px rgba(77,163,255,.25)
+    }
+    .btn.secondary{
+      background:#1c2747;
+      box-shadow:none;
+      border:1px solid var(--line);
+    }
+    .grid{
+      display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin:18px 0 22px
+    }
+    .card{
+      background:rgba(21,27,47,.92);
+      border:1px solid var(--line);
+      border-radius:18px;padding:16px;
+      box-shadow:0 8px 24px rgba(0,0,0,.22)
+    }
+    .label{color:var(--muted);font-size:13px}
+    .metric{font-size:30px;font-weight:900;margin-top:6px}
+    .section-title{font-size:20px;font-weight:800;margin:28px 0 12px}
+    .toolbar{
+      display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0
+    }
+    input,select{
+      background:#121a30;border:1px solid var(--line);color:var(--text);
+      padding:10px 12px;border-radius:10px
+    }
+    table{
+      width:100%;border-collapse:collapse;background:rgba(21,27,47,.92);
+      border:1px solid var(--line);border-radius:18px;overflow:hidden
+    }
+    th,td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+    th{background:#1a2240;text-align:left;position:sticky;top:0}
+    tr:hover td{background:rgba(255,255,255,.03)}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
+    .ok{background:rgba(31,191,117,.15);color:#6ff0aa}
+    .warn{background:rgba(255,176,32,.14);color:#ffd071}
+    .bad{background:rgba(255,107,107,.14);color:#ff9f9f}
+    .muted{color:var(--muted)}
+    .note{
+      background:#11192f;border:1px solid var(--line);padding:14px 16px;border-radius:16px;
+      color:var(--muted);line-height:1.7
+    }
+    a{color:#92c5ff}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    @media (max-width:1100px){ .grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+    @media (max-width:640px){ .grid{grid-template-columns:1fr;} .title{font-size:22px} }
   </style>
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
-      <div class="title">
-        <h1>Pererenan Surf Forecast Pro</h1>
-        <p>持っている板から選べる・時間帯ごとの波質・ベスト時間帯・おすすめボード提案</p>
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <div class="title">国会議員サイト証明書ダッシュボード</div>
+      <div class="sub">
+        GitHub Pages で表示できる静的HTML版です。<br>
+        <b>このHTML自体は証明書の取得やクロスサイト確認を直接はできません。</b>
+        そのため、同じリポジトリ内の <code>data.json</code> を読み込んで表示する構成です。
       </div>
-      <div class="top-actions">
-        <div class="pill" id="lastUpdated">Last update --:--</div>
-        <div class="pill" id="bestTimePill">Best time --</div>
-        <button class="btn primary" id="refreshBtn">コンディション更新</button>
-      </div>
-    </header>
-
-    <main class="layout">
-      <section class="col">
-        <div class="card hero">
-          <div class="hero-top">
-            <div>
-              <div class="eyebrow">PERERENAN ・ PREMIUM VIEW</div>
-              <h2 id="headline">胸〜肩 / 朝が良い</h2>
-              <p id="summary">朝は面が整い、ミドルからインサイドまでつなぎやすいコンディション。混雑前の時間帯が狙い目です。</p>
-            </div>
-            <div class="score-box">
-              <div class="label">Surf Score</div>
-              <div class="score" id="score">82</div>
-              <div class="meta" id="scoreLabel">Good Session</div>
-            </div>
-          </div>
-
-          <div class="ocean" id="ocean">
-            <div class="wave-compare-wrap">
-              <div class="shore-slope"></div>
-              <div class="height-guides" id="heightGuides"></div>
-              <div class="surfer-figure">
-                <div class="head"></div>
-                <div class="torso"></div>
-                <div class="arm left"></div>
-                <div class="arm right"></div>
-                <div class="leg left"></div>
-                <div class="leg right"></div>
-                <div class="boardshorts"></div>
-              </div>
-              <div class="wave-outline" id="waveOutline"></div>
-              <div class="wave-face"></div>
-              <div class="wave-lip"></div>
-              <div class="height-labels">
-                <span>頭</span>
-                <span>肩</span>
-                <span>胸</span>
-                <span>腹</span>
-                <span>腰</span>
-                <span>膝</span>
-                <span>すね</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="hero-stats">
-            <div class="stat"><div class="k">サイズ</div><div class="v" id="waveSize">4.1 ft</div></div>
-            <div class="stat"><div class="k">風</div><div class="v" id="wind">4 kts</div></div>
-            <div class="stat"><div class="k">うねり</div><div class="v" id="swell">2.1 m</div></div>
-            <div class="stat"><div class="k">波質</div><div class="v" id="overallQuality">A-</div></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>あなたのサーフボード</h3>
-              <div class="meta">メニューから選ぶと、提案ロジックの優先度に反映</div>
-            </div>
-            <div class="pill">Owned Boards</div>
-          </div>
-          <div class="board-menu" id="boardMenu"></div>
-          <div class="owned-board-card" id="selectedBoardInfo"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>時間帯ごとの波質</h3>
-              <div class="meta">時間帯によるサイズ・波質・風向き・おすすめ度</div>
-            </div>
-            <div class="pill">Wave by time</div>
-          </div>
-          <div class="forecast-grid" id="forecastGrid"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>波に応じたボード提案</h3>
-              <div class="meta">今のサイズと波質に対して、持っている板から提案</div>
-            </div>
-            <div class="pill" id="currentCall">Current call</div>
-          </div>
-          <div class="board-reco" id="boardReco"></div>
-        </div>
-      </section>
-
-      <aside class="col">
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>コンディション詳細</h3>
-              <div class="meta">風向き・周期・安定感・全体評価</div>
-            </div>
-            <div class="pill" id="qualityBadge">Quality</div>
-          </div>
-          <div class="detail-grid">
-            <div class="detail">
-              <div class="k">風向き</div>
-              <div class="v" id="windDir">ENE</div>
-              <div class="s" id="windNote">軽いオフショア</div>
-            </div>
-            <div class="detail">
-              <div class="k">周期</div>
-              <div class="v" id="period">13s</div>
-              <div class="s">周期があるほどフェイスが続きやすい</div>
-            </div>
-            <div class="detail">
-              <div class="k">コンシステンシー</div>
-              <div class="v" id="consistency">74%</div>
-              <div class="s">セットの入りやすさ</div>
-            </div>
-            <div class="detail">
-              <div class="k">ベスト時間帯</div>
-              <div class="v" id="bestWindow">6:00</div>
-              <div class="s" id="bestWindowNote">朝イチが最優先</div>
-            </div>
-          </div>
-          <div class="bar"><span id="qualityBar" style="width:82%"></span></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>今日の入りどき</h3>
-              <div class="meta">迷った時の優先順位</div>
-            </div>
-            <div class="pill">Session Plan</div>
-          </div>
-          <div class="session-list" id="sessionList"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>Pererenanメモ</h3>
-              <div class="meta">その日の波選びに使う補足</div>
-            </div>
-            <div class="pill">Spot notes</div>
-          </div>
-          <div class="spot-note" id="spotNote"></div>
-        </div>
-      </aside>
-    </main>
+      <div class="small" id="generatedAt">最終更新: -</div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="reloadBtn">最新データを再読み込み</button>
+      <button class="btn secondary" id="openDataBtn">data.jsonを開く</button>
+    </div>
   </div>
 
-  <script>
-    const ownedBoards = [
-      {
-        id: 'sampler',
-        name: 'Sampler 5\'7',
-        label: 'Sampler',
-        summary: '小さめ〜ミドルサイズで波数を取りたい日に強い。滑り出しが早く、厚めのセクションでもつなぎやすい。'
-      },
-      {
-        id: 'twohappy',
-        name: 'Two Happy 5\'9',
-        label: 'Two Happy',
-        summary: '胸〜肩以上で反応良く動かしたい時向き。フェイスが立つ波やクリーンな日で真価を出しやすい。'
-      },
-      {
-        id: 'happytraveler',
-        name: 'Happy Traveler 6\'0',
-        label: 'Happy Traveler',
-        summary: '取りやすさと動かしやすさのバランスが良い。混雑がある日やサイズに迷う日に頼れる一本。'
-      },
-      {
-        id: 'm23',
-        name: 'M23 6\'6',
-        label: 'M23',
-        summary: 'サイズがある日や押しのある波で安心感が高い。パドルの余裕を確保しながらしっかり走れる。'
-      }
-    ];
+  <div class="note">
+    ポイント:
+    1) この <code>index.html</code> は GitHub Pages にそのまま置けます。<br>
+    2) 実データは <code>data.json</code> を差し替えるだけで更新されます。<br>
+    3) 本当に「更新ボタンで現在情報を取得」までやるには、別途 Python / GitHub Actions / Cloudflare Workers / Vercel Functions などで
+    <code>data.json</code> を生成する仕組みが必要です。
+  </div>
 
-    const scenarios = [
-      {
-        headline: '胸〜肩 / 朝が良い',
-        summary: '朝は面が整い、ミドルからインサイドまでつなぎやすいコンディション。混雑前の時間帯が狙い目です。',
-        score: 82,
-        scoreLabel: 'Good Session',
-        waveSize: '4.1 ft',
-        wind: '4 kts',
-        swell: '2.1 m',
-        overallQuality: 'A-',
-        windDir: 'ENE',
-        windNote: '軽いオフショア',
-        period: '13s',
-        consistency: '74%',
-        bestTime: '6:00 - 8:30',
-        bestTimeShort: '6:00',
-        bestTimeNote: '朝イチが最優先',
-        qualityBadge: 'Clean faces',
-        qualityBar: 82,
-        waveHeightPx: '128px',
-        surferX: '58%',
-        spotNote: '朝は比較的フェイスが整い、混雑前に乗りやすい波を取りやすい日。昼前からは人が増えやすいので、ポジションを少しずらして待つのが有効。',
-        timeBands: [
-          { time: '早朝', size: '胸', quality: '◎ クリーン', wind: 'オフ', best: true },
-          { time: '朝', size: '胸〜肩', quality: '○ 良い', wind: 'オフ', best: true },
-          { time: '昼前', size: '肩', quality: '○ 走れる', wind: '弱サイド', best: false },
-          { time: '昼', size: '肩', quality: '△ 混雑', wind: 'ややオン', best: false },
-          { time: '夕方', size: '胸', quality: '○ まとまる', wind: '弱め', best: false }
-        ],
-        boardRankings: [
-          { id: 'twohappy', tag: 'ベスト', tagClass: 'good', reason: '胸〜肩で面が整う時間帯に最も気持ちよく動かせる。' },
-          { id: 'happytraveler', tag: '安定', tagClass: 'info', reason: '混雑時でも早めに乗れて、全体を通して扱いやすい。' },
-          { id: 'sampler', tag: '予備', tagClass: 'warn', reason: 'サイズが落ちた夕方や厚めのセクションなら有効。' }
-        ],
-        sessions: [
-          { name: '第1候補', tag: '朝イチ', note: '6:00〜8:30が最もバランス良く、良い波を取りやすい。' },
-          { name: '第2候補', tag: '昼前', note: 'サイズは残るが人が増えるので、ピークの外側も視野に。' },
-          { name: '第3候補', tag: '夕方', note: '風が落ちれば遊べる。サイズ重視なら期待しすぎない方が良い。' }
-        ]
-      },
-      {
-        headline: '頭前後 / パワーあり',
-        summary: 'セットは押しがあり、しっかり加速できる日。深追いしすぎると刺さりやすいので、余裕あるテイクオフが重要です。',
-        score: 89,
-        scoreLabel: 'Advanced Good',
-        waveSize: '5.8 ft',
-        wind: '6 kts',
-        swell: '2.7 m',
-        overallQuality: 'A',
-        windDir: 'E',
-        windNote: 'サイドオフ寄り',
-        period: '15s',
-        consistency: '68%',
-        bestTime: '7:00 - 9:00',
-        bestTimeShort: '7:00',
-        bestTimeNote: 'サイズを受け止めやすい時間',
-        qualityBadge: 'Power swell',
-        qualityBar: 89,
-        waveHeightPx: '154px',
-        surferX: '62%',
-        spotNote: 'サイズがある分、見た目より押しが強い日。無理にショートで攻めるより、余裕のある板で本数をまとめた方が満足度が高い。',
-        timeBands: [
-          { time: '早朝', size: '肩〜頭', quality: '○ 走れる', wind: 'オフ', best: false },
-          { time: '朝', size: '頭', quality: '◎ ベスト', wind: 'サイドオフ', best: true },
-          { time: '昼前', size: '頭+', quality: '○ パワー', wind: '弱サイド', best: false },
-          { time: '昼', size: '頭+', quality: '△ ハード', wind: 'ややオン', best: false },
-          { time: '夕方', size: '肩〜頭', quality: '○ 少し落ち着く', wind: '弱め', best: true }
-        ],
-        boardRankings: [
-          { id: 'm23', tag: '最有力', tagClass: 'good', reason: 'サイズがある日に最も安心感があり、余裕を持って入れる。' },
-          { id: 'happytraveler', tag: '次点', tagClass: 'info', reason: '少し落ち着く時間帯なら十分楽しめる。' },
-          { id: 'twohappy', tag: '上級者向け', tagClass: 'warn', reason: 'ハマれば気持ち良いが、取りやすさは落ちる。' }
-        ],
-        sessions: [
-          { name: '第1候補', tag: '朝', note: '7:00〜9:00が最もまとまりやすく、サイズにも慣れやすい。' },
-          { name: '第2候補', tag: '夕方', note: '少しサイズが落ちれば入りやすくなる。' },
-          { name: '注意', tag: '昼', note: '人が多いのにサイズも残ると危険度が上がる。無理しない。' }
-        ]
-      },
-      {
-        headline: '腰〜腹 / 本数重視の日',
-        summary: 'サイズは控えめで、厚めのセクションをつないで遊ぶイメージ。波数を取りたいなら浮力が効きます。',
-        score: 71,
-        scoreLabel: 'Fun Small Day',
-        waveSize: '2.8 ft',
-        wind: '7 kts',
-        swell: '1.4 m',
-        overallQuality: 'B',
-        windDir: 'SE',
-        windNote: 'ややオン気味',
-        period: '10s',
-        consistency: '81%',
-        bestTime: '6:30 - 7:30',
-        bestTimeShort: '6:30',
-        bestTimeNote: '風が入る前が良い',
-        qualityBadge: 'Fun waves',
-        qualityBar: 71,
-        waveHeightPx: '94px',
-        surferX: '54%',
-        spotNote: 'サイズがない分、板選びの差が出る日。短すぎる板より、少し余裕のある板で本数を増やす方が楽しみやすい。',
-        timeBands: [
-          { time: '早朝', size: '腰', quality: '○ 遊べる', wind: '弱オフ', best: true },
-          { time: '朝', size: '腰〜腹', quality: '○ つなげる', wind: '弱め', best: true },
-          { time: '昼前', size: '腹', quality: '△ 厚め', wind: 'ややオン', best: false },
-          { time: '昼', size: '腹', quality: '△ 風あり', wind: 'オン', best: false },
-          { time: '夕方', size: '腰〜腹', quality: '○ まあまあ', wind: '弱まる', best: false }
-        ],
-        boardRankings: [
-          { id: 'sampler', tag: '最適', tagClass: 'good', reason: '小さめで厚い波に一番合いやすく、本数も取りやすい。' },
-          { id: 'happytraveler', tag: '安定', tagClass: 'info', reason: 'サイズが少し上がる時間帯なら十分使いやすい。' },
-          { id: 'twohappy', tag: '優先低め', tagClass: 'warn', reason: '今日のサイズ感だとやや勿体ない。' }
-        ],
-        sessions: [
-          { name: '第1候補', tag: '早朝', note: '風が弱いうちに本数をまとめるのがベスト。' },
-          { name: '第2候補', tag: '朝', note: '混雑が増える前ならまだ十分楽しめる。' },
-          { name: '第3候補', tag: '夕方', note: '風が落ちればもう一度遊べる可能性あり。' }
-        ]
-      }
-    ];
+  <div class="grid" id="summaryGrid"></div>
 
-    let selectedBoardId = ownedBoards[0].id;
+  <div class="section-title">党別集計</div>
+  <div id="partyTable"></div>
 
-    const el = {
-      heightGuides: document.getElementById('heightGuides'),
-      headline: document.getElementById('headline'),
-      summary: document.getElementById('summary'),
-      score: document.getElementById('score'),
-      scoreLabel: document.getElementById('scoreLabel'),
-      waveSize: document.getElementById('waveSize'),
-      wind: document.getElementById('wind'),
-      swell: document.getElementById('swell'),
-      overallQuality: document.getElementById('overallQuality'),
-      windDir: document.getElementById('windDir'),
-      windNote: document.getElementById('windNote'),
-      period: document.getElementById('period'),
-      consistency: document.getElementById('consistency'),
-      bestWindow: document.getElementById('bestWindow'),
-      bestWindowNote: document.getElementById('bestWindowNote'),
-      qualityBadge: document.getElementById('qualityBadge'),
-      qualityBar: document.getElementById('qualityBar'),
-      bestTimePill: document.getElementById('bestTimePill'),
-      forecastGrid: document.getElementById('forecastGrid'),
-      boardReco: document.getElementById('boardReco'),
-      sessionList: document.getElementById('sessionList'),
-      spotNote: document.getElementById('spotNote'),
-      currentCall: document.getElementById('currentCall'),
-      boardMenu: document.getElementById('boardMenu'),
-      selectedBoardInfo: document.getElementById('selectedBoardInfo'),
-      ocean: document.getElementById('ocean'),
-      lastUpdated: document.getElementById('lastUpdated')
-    };
+  <div class="section-title">議員別明細</div>
+  <div class="toolbar">
+    <input id="searchBox" placeholder="名前・党名で検索">
+    <select id="filterBox">
+      <option value="all">すべて</option>
+      <option value="gs_leg">GS国会議員用のみ</option>
+      <option value="gs_any">GlobalSign証明書のみ</option>
+      <option value="seal">サイトシールあり</option>
+      <option value="no_site">サイト未取得</option>
+    </select>
+  </div>
+  <div id="detailTable"></div>
+</div>
 
-    function setBoardMenu() {
-      el.boardMenu.innerHTML = ownedBoards.map(board => `
-        <button class="menu-btn ${board.id === selectedBoardId ? 'active' : ''}" data-board="${board.id}">${board.label}</button>
-      `).join('');
+<script>
+let DATA = {
+  summary: {
+    total_members: 0,
+    with_site: 0,
+    https_count: 0,
+    gs_count: 0,
+    gs_legislator_count: 0,
+    site_seal_count: 0,
+    gs_share_all_members: 0,
+    gs_share_sites_only: 0,
+    site_seal_share_sites_only: 0,
+    by_party: [],
+    generated_at: "-"
+  },
+  results: []
+};
 
-      el.boardMenu.querySelectorAll('[data-board]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          selectedBoardId = btn.dataset.board;
-          setBoardMenu();
-          renderBoardInfo();
-          renderScenario(currentScenario);
-        });
-      });
-    }
+function pill(flag, okText="Yes", noText="No"){
+  return flag
+    ? `<span class="pill ok">${okText}</span>`
+    : `<span class="pill bad">${noText}</span>`;
+}
 
-    function renderBoardInfo() {
-      const board = ownedBoards.find(b => b.id === selectedBoardId);
-      el.selectedBoardInfo.innerHTML = `<strong>${board.name}</strong><p>${board.summary}</p>`;
-    }
+function renderSummary(s){
+  const items = [
+    ["現職議員総数", s.total_members],
+    ["サイト取得数", s.with_site],
+    ["HTTPSサイト数", s.https_count],
+    ["GS証明書数", s.gs_count],
+    ["GS国会議員用数", s.gs_legislator_count],
+    ["GS国会議員用シェア(全議員)", `${s.gs_share_all_members}%`],
+    ["GS国会議員用シェア(サイト取得母数)", `${s.gs_share_sites_only}%`],
+    ["サイトシール数", s.site_seal_count],
+    ["サイトシールシェア(サイト取得母数)", `${s.site_seal_share_sites_only}%`],
+  ];
+  document.getElementById("summaryGrid").innerHTML = items.map(([label,val]) => `
+    <div class="card">
+      <div class="label">${label}</div>
+      <div class="metric">${val}</div>
+    </div>
+  `).join("");
+}
 
-    function getRecommendedBoards(scenario) {
-      const preferred = scenario.boardRankings;
-      const visible = preferred.filter(item => ownedBoards.some(board => board.id === item.id));
+function renderPartyTable(rows){
+  let html = `<table><thead><tr>
+    <th>党名</th><th>総数</th><th>サイト取得</th><th>GS国会議員用</th><th>GS</th><th>サイトシール</th>
+  </tr></thead><tbody>`;
+  for(const r of rows){
+    html += `<tr>
+      <td>${r.party ?? "-"}</td>
+      <td>${r.total ?? 0}</td>
+      <td>${r.with_site ?? 0}</td>
+      <td>${r.gs_leg ?? 0}</td>
+      <td>${r.gs ?? 0}</td>
+      <td>${r.seal ?? 0}</td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  document.getElementById("partyTable").innerHTML = html;
+}
 
-      visible.sort((a, b) => {
-        if (a.id === selectedBoardId) return -1;
-        if (b.id === selectedBoardId) return 1;
-        return 0;
-      });
+function filteredResults(){
+  const q = document.getElementById("searchBox").value.trim().toLowerCase();
+  const filter = document.getElementById("filterBox").value;
 
-      return visible.map(item => {
-        const board = ownedBoards.find(b => b.id === item.id);
-        const highlight = item.id === selectedBoardId ? '今選択中の板' : item.tag;
-        const highlightClass = item.id === selectedBoardId ? 'info' : item.tagClass;
-        return {
-          name: board.name,
-          label: board.label,
-          reason: item.reason,
-          tag: highlight,
-          tagClass: highlightClass
-        };
-      });
-    }
+  return DATA.results.filter(r => {
+    const hit = !q || [
+      r.name, r.party, r.chamber, r.cert_subject_o, r.cert_issuer_o, r.cert_issuer_cn
+    ].filter(Boolean).join(" ").toLowerCase().includes(q);
 
-    function renderScenario(scenario) {
-      el.headline.textContent = scenario.headline;
-      el.summary.textContent = scenario.summary;
-      el.score.textContent = scenario.score;
-      el.scoreLabel.textContent = scenario.scoreLabel;
-      el.waveSize.textContent = scenario.waveSize;
-      el.wind.textContent = scenario.wind;
-      el.swell.textContent = scenario.swell;
-      el.overallQuality.textContent = scenario.overallQuality;
-      el.windDir.textContent = scenario.windDir;
-      el.windNote.textContent = scenario.windNote;
-      el.period.textContent = scenario.period;
-      el.consistency.textContent = scenario.consistency;
-      el.bestWindow.textContent = scenario.bestTimeShort;
-      el.bestWindowNote.textContent = scenario.bestTimeNote;
-      el.bestTimePill.textContent = `Best time ${scenario.bestTime}`;
-      el.qualityBadge.textContent = scenario.qualityBadge;
-      el.qualityBar.style.width = scenario.qualityBar + '%';
-      el.currentCall.textContent = `おすすめ基準: ${scenario.bestTime}`;
-      el.spotNote.textContent = scenario.spotNote;
+    if(!hit) return false;
+    if(filter === "gs_leg") return !!r.is_gs_legislator_cert;
+    if(filter === "gs_any") return !!r.is_gs;
+    if(filter === "seal") return !!r.site_seal_found;
+    if(filter === "no_site") return !r.official_url;
+    return true;
+  });
+}
 
-      el.ocean.style.setProperty('--wave-shape-height', scenario.waveHeightPx);
+function renderDetailTable(){
+  const rows = filteredResults();
+  let html = `<table><thead><tr>
+    <th>院</th><th>氏名</th><th>党</th><th>サイト</th><th>GS国会議員用</th>
+    <th>GS</th><th>サイトシール</th><th>Subject O</th><th>Issuer</th><th>備考</th>
+  </tr></thead><tbody>`;
 
-      const guideCount = 7;
-      el.heightGuides.innerHTML = Array.from({ length: guideCount }, (_, i) => {
-        const top = 6 + i * 13.8;
-        return `<div class="guide-line" style="top:${top}%"></div>`;
-      }).join('');
+  for(const r of rows){
+    const site = r.official_url
+      ? `<a href="${r.official_url}" target="_blank" rel="noopener">公式サイト</a>`
+      : `<span class="muted">-</span>`;
+    const issuer = [r.cert_issuer_o, r.cert_issuer_cn].filter(Boolean).join(" / ") || "-";
+    const notes = Array.isArray(r.notes) && r.notes.length ? r.notes.join("<br>") : "-";
 
-      el.forecastGrid.innerHTML = scenario.timeBands.map(item => `
-        <div class="time-card ${item.best ? 'best' : ''}">
-          <div class="t">${item.time}</div>
-          <div class="size">${item.size}</div>
-          <div class="quality">${item.quality}</div>
-          <div class="wind">風: ${item.wind}</div>
-        </div>
-      `).join('');
+    html += `<tr>
+      <td>${r.chamber ?? "-"}</td>
+      <td>${r.name ?? "-"}</td>
+      <td>${r.party ?? "-"}</td>
+      <td>${site}</td>
+      <td>${pill(r.is_gs_legislator_cert, "該当", "非該当")}</td>
+      <td>${pill(r.is_gs, "GS", "非GS")}</td>
+      <td>${pill(r.site_seal_found, "あり", "なし")}</td>
+      <td>${r.cert_subject_o ?? "-"}</td>
+      <td>${issuer}</td>
+      <td>${notes}</td>
+    </tr>`;
+  }
 
-      const boards = getRecommendedBoards(scenario);
-      el.boardReco.innerHTML = boards.map((board, i) => `
-        <div class="board-reco-item">
-          <div class="icon">${i === 0 ? '🏄' : i === 1 ? '🌊' : '⚡'}</div>
-          <div>
-            <strong>${board.name}</strong>
-            <p>${board.reason}</p>
-          </div>
-          <div class="tag ${board.tagClass}">${board.tag}</div>
-        </div>
-      `).join('');
+  html += `</tbody></table>`;
+  document.getElementById("detailTable").innerHTML = html;
+}
 
-      el.sessionList.innerHTML = scenario.sessions.map(item => `
-        <div class="session-item">
-          <strong><span>${item.name}</span><span class="tag info">${item.tag}</span></strong>
-          <p>${item.note}</p>
-        </div>
-      `).join('');
+async function loadData(){
+  const res = await fetch(`./data.json?t=${Date.now()}`, {cache: "no-store"});
+  if(!res.ok) throw new Error(`data.json の読み込みに失敗: ${res.status}`);
+  DATA = await res.json();
 
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, '0');
-      const mm = String(now.getMinutes()).padStart(2, '0');
-      el.lastUpdated.textContent = `Last update ${hh}:${mm}`;
-    }
+  const generatedAt =
+    DATA.summary?.generated_at ||
+    DATA.generated_at ||
+    "-";
 
-    let currentScenario = scenarios[0];
+  document.getElementById("generatedAt").textContent = `最終更新: ${generatedAt}`;
+  renderSummary(DATA.summary || {});
+  renderPartyTable(DATA.summary?.by_party || []);
+  renderDetailTable();
+}
 
-    function randomizeScenario() {
-      currentScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
-      renderScenario(currentScenario);
-    }
+document.getElementById("reloadBtn").addEventListener("click", async () => {
+  try{
+    await loadData();
+    alert("最新の data.json を再読み込みしました。");
+  }catch(e){
+    alert(e.message);
+  }
+});
 
-    document.getElementById('refreshBtn').addEventListener('click', randomizeScenario);
+document.getElementById("openDataBtn").addEventListener("click", () => {
+  window.open("./data.json", "_blank");
+});
 
-    setBoardMenu();
-    renderBoardInfo();
-    renderScenario(currentScenario);
-  </script>
+document.getElementById("searchBox").addEventListener("input", renderDetailTable);
+document.getElementById("filterBox").addEventListener("change", renderDetailTable);
+
+loadData().catch(err => {
+  document.getElementById("summaryGrid").innerHTML = `
+    <div class="card" style="grid-column:1/-1">
+      <div class="label">エラー</div>
+      <div style="margin-top:8px">${err.message}</div>
+      <div class="small" style="margin-top:8px">同じフォルダに data.json を置いてください。</div>
+    </div>
+  `;
+});
+</script>
 </body>
 </html>
