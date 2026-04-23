@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 
 
 OUT_FILE = Path("data.json")
-USER_AGENT = "DietCertDashboard/1.2 (+GitHub Actions)"
+USER_AGENT = "DietCertDashboard/1.3 (+GitHub Actions)"
 TIMEOUT = 20
 MAX_ENRICH_WORKERS = 12
 MAX_SCAN_WORKERS = 20
@@ -181,10 +181,6 @@ def is_person_name(text: str) -> bool:
 
 
 def get_shugiin_members_from_official() -> List[Member]:
-    """
-    旧衆院一覧URL。現在メンテナンス中のことがあるので、
-    メンテ判定されたら空配列を返してフォールバックさせる。
-    """
     url = "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/1giin.htm"
     html = get_text(url)
     if not html:
@@ -203,134 +199,98 @@ def get_shugiin_members_from_official() -> List[Member]:
         if name:
             members.append(Member(chamber="衆議院", name=name, party=party))
 
-    dedup = {(m.chamber, m.name): m for m in members}
-    return list(dedup.values())
+    return list({(m.chamber, m.name): m for m in members}.values())
 
 
 def get_shugiin_members_from_wikipedia() -> List[Member]:
-
     url = "https://ja.wikipedia.org/wiki/衆議院議員一覧"
-
     html = get_text(url)
-
     if not html:
-
         return []
 
     soup = BeautifulSoup(html, "html.parser")
-
     lines = [re.sub(r"\s+", " ", line).strip() for line in soup.get_text("\n").splitlines()]
-
     lines = [line for line in lines if line]
 
     members: List[Member] = []
 
     for i in range(len(lines) - 1):
-
         name = lines[i]
-
         party_line = lines[i + 1]
 
         if not is_person_name(name):
-
             continue
-
         if not (party_line.startswith("（") and party_line.endswith("）")):
-
             continue
 
         party = normalize_party(party_line.strip("（）").strip())
-
         if party not in SHUGIIN_PARTIES:
-
             continue
 
-        members.append(Member(chamber="衆議院", name=clean_name(name), party=party))
+        members.append(
+            Member(
+                chamber="衆議院",
+                name=clean_name(name),
+                party=party,
+            )
+        )
 
     return list({(m.chamber, m.name): m for m in members}.values())
 
+
+def get_shugiin_members() -> List[Member]:
+    official = get_shugiin_members_from_official()
+    if official:
+        return official
+    return get_shugiin_members_from_wikipedia()
+
+
 def get_sangiin_members() -> List[Member]:
-
     url = "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm"
-
     html = get_text(url)
-
     if not html:
-
         return []
 
     soup = BeautifulSoup(html, "html.parser")
-
     lines = [re.sub(r"\s+", " ", line).strip() for line in soup.get_text("\n").splitlines()]
-
     lines = [line for line in lines if line]
 
     party_map = {
-
         "自民": "自由民主党",
-
         "立憲": "立憲民主党",
-
         "維新": "日本維新の会",
-
         "公明": "公明党",
-
         "民主": "国民民主党",
-
         "参政": "参政党",
-
         "共産": "日本共産党",
-
         "れ新": "れいわ新選組",
-
         "保守": "日本保守党",
-
         "沖縄": "沖縄の風",
-
         "みら": "チームみらい",
-
         "社民": "社会民主党",
-
         "無所属": "無所属",
-
     }
 
     members: List[Member] = []
 
     for line in lines:
-
-        m = re.match(
-
+        match = re.match(
             r"^([一-龥々〆ヵヶぁ-んァ-ンー ]{2,40})\s+"
-
             r"([ぁ-んー ]{2,60})\s+"
-
             r"(自民|立憲|維新|公明|民主|参政|共産|れ新|保守|沖縄|みら|社民|無所属)\s+"
-
             r"(\S+)\s+"
-
             r"(令和\d+年\d+月\d+日)",
-
             line,
-
         )
-
-        if not m:
-
+        if not match:
             continue
 
         members.append(
-
             Member(
-
                 chamber="参議院",
-
-                name=clean_name(m.group(1)),
-
-                party=party_map[m.group(3)],
-
+                name=clean_name(match.group(1)),
+                party=party_map[match.group(3)],
             )
-
         )
 
     return list({(m.chamber, m.name): m for m in members}.values())
@@ -679,9 +639,9 @@ def main() -> None:
         key=lambda m: (m.chamber, m.name),
     )
 
-    print(f"Shugiin fetched: {len(shugiin_members)}")
-    print(f"Sangiin fetched: {len(sangiin_members)}")
-    print(f"Current members fetched: {len(members)}")
+    print("Shugiin fetched:", len(shugiin_members), flush=True)
+    print("Sangiin fetched:", len(sangiin_members), flush=True)
+    print("Current members fetched:", len(members), flush=True)
 
     enriched: List[Member] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_ENRICH_WORKERS) as executor:
@@ -689,7 +649,7 @@ def main() -> None:
         for i, future in enumerate(concurrent.futures.as_completed(futures), start=1):
             enriched.append(future.result())
             if i % 25 == 0:
-                print(f"Enriched {i}/{len(members)}")
+                print(f"Enriched {i}/{len(members)}", flush=True)
 
     enriched = sorted(enriched, key=lambda member: (member.chamber, member.name))
 
@@ -699,7 +659,7 @@ def main() -> None:
         for i, future in enumerate(concurrent.futures.as_completed(futures), start=1):
             results.append(future.result())
             if i % 25 == 0:
-                print(f"Scanned {i}/{len(enriched)}")
+                print(f"Scanned {i}/{len(enriched)}", flush=True)
 
     results = sorted(results, key=lambda result: (result.chamber, result.name))
 
@@ -713,7 +673,7 @@ def main() -> None:
         json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    print(f"Wrote {OUT_FILE} with {len(results)} rows")
+    print(f"Wrote {OUT_FILE} with {len(results)} rows", flush=True)
 
 
 if __name__ == "__main__":
