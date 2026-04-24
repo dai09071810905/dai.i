@@ -52,7 +52,7 @@ def get_wiki_page(name):
     except:
         pass
 
-    # fallback（検索）
+    # fallback
     url = search_wikipedia(name)
     if url:
         try:
@@ -70,13 +70,13 @@ def get_wiki_page(name):
 def extract_official_url(html):
     soup = BeautifulSoup(html, "lxml")
 
-    # ① infobox
+    # infobox
     for a in soup.select("table.infobox a[href]"):
         href = a.get("href")
         if href and href.startswith("http"):
             return href
 
-    # ② 外部リンク（重要）
+    # 外部リンク
     for a in soup.select("#外部リンク a[href]"):
         href = a.get("href")
         if href and href.startswith("http"):
@@ -103,18 +103,9 @@ def try_jimin(name):
     return None
 
 # ------------------------
-# 議員一覧（修正版）
+# 議員一覧（修正版・重要）
 # ------------------------
 def get_members():
-    url = "https://ja.wikipedia.org/wiki/衆議院議員一覧"
-    html = requests.get(url, headers=HEADERS).text
-    soup = BeautifulSoup(html, "lxml")
-
-    members = []
-
-    def get_members():
-    import re
-
     url = "https://ja.wikipedia.org/wiki/衆議院議員一覧"
     html = requests.get(url, headers=HEADERS).text
     soup = BeautifulSoup(html, "lxml")
@@ -125,21 +116,17 @@ def get_members():
         href = a.get("href")
         name = a.text.strip()
 
-        # Wikipedia記事リンクだけ
-        if not href.startswith("/wiki/"):
-            continue
-
-        # 除外（これ重要）
+        # 不要リンク除外
         if any(x in href for x in [
             "Wikipedia:", "Help:", "File:", "Category:", "Template:"
         ]):
             continue
 
-        # 日本人名っぽい
+        # 日本人名っぽいものだけ
         if not re.match(r'^[一-龥ぁ-んァ-ンー]+$', name):
             continue
 
-        # 長さチェック
+        # 長さ制限
         if len(name) < 2 or len(name) > 6:
             continue
 
@@ -150,6 +137,7 @@ def get_members():
     print(f"議員候補数: {len(members)}")
 
     return members
+
 # ------------------------
 # メイン
 # ------------------------
@@ -172,7 +160,6 @@ def main():
 
         url = extract_official_url(html)
 
-        # fallback：自民党
         if not url:
             url = try_jimin(name)
 
