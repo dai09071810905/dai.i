@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from __future__ import annotations
@@ -118,6 +119,18 @@ OFFICIAL_URL_OVERRIDES = {
     "前原誠司": "https://www.maehara21.com/",
 }
 
+DISPLAY_PARTIES = [
+    "自由民主党",
+    "国民民主党",
+    "立憲民主党",
+    "れいわ新選組",
+    "中道改革連合",
+]
+
+def party_group(party: str) -> str:
+    p = normalize_party(party or "")
+    return p if p in DISPLAY_PARTIES else "その他"
+
 
 @dataclass
 class Member:
@@ -237,49 +250,95 @@ def is_person_name(text: str) -> bool:
 
 
 def get_shugiin_members_from_official() -> List[Member]:
-    url = "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/1giin.htm"
-    text = get_text(url)
-    if not text:
-        return []
-    if "under maintenance" in text.lower() or "メンテナンス中" in text:
-        return []
-
-    members: List[Member] = []
-    # 例: 氏名君, 自民.
-    pattern = re.compile(r"([^\s,、。]+(?:\s+[^\s,、。]+)*)君,\s*([^\s<.。]+)")
-    for match in pattern.finditer(text):
-        name = clean_name(match.group(1))
-        party = normalize_party(match.group(2))
-        if name and party:
-            members.append(Member(chamber="衆議院", name=name, party=party))
-    return list({(m.chamber, name_key(m.name)): m for m in members}.values())
-
+    urls = [
+        "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/1giin.htm",
+        "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/giin.htm",
+        "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/meibo.htm",
+    ]
+    best: List[Member] = []
+    party_tokens = sorted(set(list(PARTY_NORMALIZATION.keys()) + list(SHUGIIN_PARTIES)), key=len, reverse=True)
+    party_re = "|".join(re.escape(x) for x in party_tokens if x)
+    for url in urls:
+        text = get_text(url)
+        if not text:
+            continue
+        if "under maintenance" in text.lower() or "メンテナンス中" in text:
+            continue
+        soup = BeautifulSoup(text, "html.parser")
+        members: List[Member] = []
+        pattern = re.compile(r"([^\s,、。<>]+(?:\s+[^\s,、。<>]+)*)君[,，、]\s*([^\s<.。]+)")
+        for match in pattern.finditer(soup.get_text(" ")):
+            name = clean_name(match.group(1))
+            party = normalize_party(match.group(2))
+            if name and party:
+                members.append(Member(chamber="衆議院", name=name, party=party))
+        for tr in soup.select("tr"):
+            cells = [re.sub(r"\s+", " ", c.get_text(" ", strip=True)) for c in tr.select("td,th")]
+            if len(cells) < 2:
+                continue
+            joined = " ".join(cells)
+            pm = re.search(rf"({party_re})", joined) if party_re else None
+            if not pm:
+                continue
+            party = normalize_party(pm.group(1))
+            if party not in SHUGIIN_PARTIES:
+                continue
+            for cell in cells:
+                c = clean_name(cell)
+                if is_person_name(c) and not re.fullmatch(r"[ぁ-んァ-ンー・ 　]+", c) and len(c) <= 12:
+                    members.append(Member(chamber="衆議院", name=c, party=party))
+                    break
+        uniq = list({(m.chamber, name_key(m.name)): m for m in members if m.name}.values())
+        if len(uniq) > len(best):
+            best = uniq
+    return best
 
 def get_shugiin_members_from_wikipedia() -> List[Member]:
     text = get_text("https://ja.wikipedia.org/wiki/衆議院議員一覧")
     if not text:
         return []
     soup = BeautifulSoup(text, "html.parser")
-    lines = [re.sub(r"\s+", " ", line).strip() for line in soup.get_text("\n").splitlines()]
-    lines = [line for line in lines if line]
-
     members: List[Member] = []
-    for i in range(len(lines) - 1):
-        name = lines[i]
-        party_line = lines[i + 1]
-        if not is_person_name(name):
+    for tr in soup.select("tr"):
+        cells = [re.sub(r"\s+", " ", c.get_text(" ", strip=True)) for c in tr.select("td,th")]
+        if len(cells) < 2:
             continue
-        if not (party_line.startswith("（") and party_line.endswith("）")):
+        found_party = None
+        for cell in cells:
+            p = normalize_party(cell)
+            if p in SHUGIIN_PARTIES:
+                found_party = p
+                break
+            for token in SHUGIIN_PARTIES:
+                if token and token in cell:
+                    found_party = token
+                    break
+            if found_party:
+                break
+        if not found_party:
             continue
-        party = normalize_party(party_line.strip("（）").strip())
-        if party in SHUGIIN_PARTIES:
-            members.append(Member(chamber="衆議院", name=clean_name(name), party=party))
+        for cell in cells:
+            c = clean_name(re.sub(r"（.*?）|\(.*?\)", "", cell))
+            if is_person_name(c) and not re.fullmatch(r"[ぁ-んァ-ンー・ 　]+", c) and len(c) <= 12:
+                members.append(Member(chamber="衆議院", name=c, party=found_party))
+                break
+    if len(members) < 100:
+        lines = [re.sub(r"\s+", " ", line).strip() for line in soup.get_text("\n").splitlines()]
+        lines = [line for line in lines if line]
+        for i in range(len(lines) - 1):
+            name = lines[i]
+            party_line = lines[i + 1]
+            if not is_person_name(name):
+                continue
+            party = normalize_party(party_line.strip("（）").strip())
+            if party in SHUGIIN_PARTIES:
+                members.append(Member(chamber="衆議院", name=clean_name(name), party=party))
     return list({(m.chamber, name_key(m.name)): m for m in members}.values())
 
-
 def get_shugiin_members() -> List[Member]:
-    members = get_shugiin_members_from_official()
-    return members or get_shugiin_members_from_wikipedia()
+    official = get_shugiin_members_from_official()
+    wiki = get_shugiin_members_from_wikipedia()
+    return official if len(official) >= len(wiki) else wiki
 
 
 def parse_sangiin_page(url: str) -> List[Member]:
@@ -563,32 +622,58 @@ def extract_candidate_urls_from_wikipedia(page_url: str, name: str, party: str) 
     return sorted(unique, key=lambda u: score_official_candidate(u, name, party), reverse=True)
 
 
-def duckduckgo_official_search(name: str, party: str) -> Optional[str]:
-    # 公式サイト未取得が多い場合の最後の補完。検索エンジン依存なのでnotesで出所を残します。
-    query = f"{name} 公式サイト 国会議員"
-    url = "https://duckduckgo.com/html/?q=" + quote(query)
-    res = request_get(url, retries=1)
-    if not res or res.status_code >= 400:
-        return None
-
-    soup = BeautifulSoup(res.text, "html.parser")
+def search_engine_official_search(name: str, party: str) -> Optional[str]:
+    queries = [
+        f"{name} 公式サイト 国会議員",
+        f"{name} 事務所 公式",
+        f"{name} ホームページ",
+    ]
+    search_urls = []
+    for q in queries:
+        qq = quote(q)
+        search_urls.extend([
+            f"https://duckduckgo.com/html/?q={qq}",
+            f"https://www.bing.com/search?q={qq}",
+        ])
     candidates: List[str] = []
-    for a in soup.select("a.result__a, a[href]"):
-        href = a.get("href")
-        if not href:
+    for surl in search_urls:
+        res = request_get(surl, retries=1)
+        if not res or res.status_code >= 400:
             continue
-        if href.startswith("//duckduckgo.com/l/?"):
-            qs = parse_qs(urlparse("https:" + href).query)
-            href = qs.get("uddg", [href])[0]
-        href = unquote(href)
-        cleaned = clean_url(href)
-        if cleaned:
-            candidates.append(cleaned)
-
-    candidates = [u for u in candidates if score_official_candidate(u, name, party) > -50]
-    if not candidates:
+        soup = BeautifulSoup(res.text, "html.parser")
+        for a in soup.select("a[href]"):
+            href = a.get("href") or ""
+            if href.startswith("//duckduckgo.com/l/?"):
+                qs = parse_qs(urlparse("https:" + href).query)
+                href = qs.get("uddg", [href])[0]
+            elif "bing.com/ck/a" in href:
+                qs = parse_qs(urlparse(href).query)
+                href = qs.get("u", [href])[0]
+                if href.startswith("a1"):
+                    try:
+                        import base64
+                        href = base64.urlsafe_b64decode(href[2:] + "===").decode("utf-8", "ignore")
+                    except Exception:
+                        pass
+            href = unquote(href)
+            cleaned = clean_url(href)
+            if cleaned and score_official_candidate(cleaned, name, party) > -50:
+                candidates.append(cleaned)
+    unique = []
+    seen = set()
+    for u in candidates:
+        parsed = urlparse(u)
+        key = parsed.netloc.lower().removeprefix("www.") + parsed.path.rstrip("/")
+        if key not in seen:
+            seen.add(key)
+            unique.append(u)
+    if not unique:
         return None
-    return sorted(candidates, key=lambda u: score_official_candidate(u, name, party), reverse=True)[0]
+    return sorted(unique, key=lambda u: score_official_candidate(u, name, party), reverse=True)[0]
+
+
+def duckduckgo_official_search(name: str, party: str) -> Optional[str]:
+    return search_engine_official_search(name, party)
 
 
 def validate_official_url(url: str, name: str) -> Optional[str]:
@@ -650,7 +735,7 @@ def enrich_member(member: Member) -> Member:
         candidate = duckduckgo_official_search(member.name, member.party)
         if candidate:
             member.official_url = validate_official_url(candidate, member.name)
-            member.official_url_source = "web_search_fallback"
+            member.official_url_source = "search_engine_fallback"
 
     return member
 
@@ -869,7 +954,6 @@ def summarize(results: List[ScanResult]) -> dict:
 
     target_https = [r for r in results if r.party in GS_SHARE_TARGET_PARTIES and r.is_https]
     target_gs = [r for r in target_https if r.is_gs]
-    target_gs_leg = [r for r in target_https if r.is_gs_legislator_cert]
 
     gs_leg_for_seal = [r for r in results if r.is_gs_legislator_cert]
     seal_on_gs_leg = [r for r in gs_leg_for_seal if r.site_seal_found]
@@ -878,53 +962,32 @@ def summarize(results: List[ScanResult]) -> dict:
     for r in results:
         row = by_chamber.setdefault(
             r.chamber or "不明",
-            {
-                "chamber": r.chamber or "不明",
-                "total": 0,
-                "with_site": 0,
-                "https": 0,
-                "gs": 0,
-                "gs_leg": 0,
-                "seal": 0,
-                "gs_share": 0.0,
-            },
+            {"chamber": r.chamber or "不明", "total": 0, "with_site": 0, "https": 0, "gs": 0, "seal": 0, "gs_share": 0.0},
         )
         row["total"] += 1
         row["with_site"] += int(bool(r.official_url))
         row["https"] += int(r.is_https)
         row["gs"] += int(r.is_gs)
-        row["gs_leg"] += int(r.is_gs_legislator_cert)
         row["seal"] += int(r.site_seal_found)
-
     for row in by_chamber.values():
         row["gs_share"] = pct(row["gs"], row["https"])
 
     by_party: Dict[str, dict] = {}
     for r in results:
-        party = r.party or "不明"
+        party = party_group(r.party)
         row = by_party.setdefault(
             party,
-            {
-                "party": party,
-                "total": 0,
-                "with_site": 0,
-                "https": 0,
-                "gs_leg": 0,
-                "gs": 0,
-                "seal": 0,
-                "gs_share": 0.0,
-            },
+            {"party": party, "total": 0, "with_site": 0, "https": 0, "gs": 0, "seal": 0, "gs_share": 0.0},
         )
         row["total"] += 1
         row["with_site"] += int(bool(r.official_url))
         row["https"] += int(r.is_https)
-        row["gs_leg"] += int(r.is_gs_legislator_cert)
         row["gs"] += int(r.is_gs)
         row["seal"] += int(r.site_seal_found)
-
     for row in by_party.values():
         row["gs_share"] = pct(row["gs"], row["https"])
 
+    party_order = {p: i for i, p in enumerate(DISPLAY_PARTIES + ["その他"])}
     return {
         "generated_at": now_iso(),
         "total_members": total_members,
@@ -933,20 +996,15 @@ def summarize(results: List[ScanResult]) -> dict:
         "gs_count": gs_count,
         "gs_legislator_count": gs_legislator_count,
         "site_seal_count": site_seal_count,
-
-        # 指定条件: 母数は自民・立憲民主党・れいわ新選組・国民民主党所属、かつSSL導入サイト
         "gs_share_target_parties": pct(len(target_gs), len(target_https)),
         "gs_share_target_parties_numerator": len(target_gs),
         "gs_share_target_parties_denominator": len(target_https),
-        "gs_leg_share_target_parties": pct(len(target_gs_leg), len(target_https)),
-
-        # 指定条件: サイトシール掲載率の母数はGS国会議員用証明書数
         "site_seal_share_gs_legislator_cert": pct(len(seal_on_gs_leg), len(gs_leg_for_seal)),
         "site_seal_share_gs_legislator_cert_numerator": len(seal_on_gs_leg),
         "site_seal_share_gs_legislator_cert_denominator": len(gs_leg_for_seal),
-
         "by_chamber": sorted(by_chamber.values(), key=lambda x: x["chamber"]),
-        "by_party": sorted(by_party.values(), key=lambda row: (-row["https"], row["party"])),
+        "by_party": sorted(by_party.values(), key=lambda row: party_order.get(row["party"], 999)),
+        "display_parties": DISPLAY_PARTIES + ["その他"],
     }
 
 
@@ -993,7 +1051,7 @@ def main() -> None:
     payload = {
         "generated_at": now_iso(),
         "summary": summarize(results),
-        "results": [asdict(r) for r in results],
+        "results": [dict(asdict(r), party_group=party_group(r.party)) for r in results],
     }
 
     OUT_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
