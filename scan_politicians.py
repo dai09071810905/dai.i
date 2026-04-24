@@ -1058,5 +1058,250 @@ def main() -> None:
     print(f"Wrote {OUT_FILE} with {len(results)} rows", flush=True)
 
 
+
+# =========================
+# v5 fixes
+# =========================
+OFFICIAL_URL_OVERRIDES.update({
+    "前原誠司": "https://www.maehara21.com/",
+    "齋藤健": "https://saito-ken.jp/",
+    "斎藤健": "https://saito-ken.jp/",
+})
+
+
+def get_official_website_from_wikidata_search(name: str) -> Optional[str]:
+    try:
+        res = request_get(
+            "https://www.wikidata.org/w/api.php?" + requests.compat.urlencode({
+                "action": "wbsearchentities",
+                "format": "json",
+                "language": "ja",
+                "uselang": "ja",
+                "search": name,
+                "limit": 5,
+            }),
+            retries=2,
+        )
+        if not res or res.status_code >= 500:
+            return None
+        for item in res.json().get("search", []):
+            qid = item.get("id")
+            if not qid:
+                continue
+            url = get_official_website_from_wikidata(qid)
+            if url:
+                return url
+    except Exception:
+        return None
+    return None
+
+
+def extract_urls_from_search_html(search_url: str, name: str, party: str) -> List[str]:
+    res = request_get(search_url, retries=1)
+    if not res or res.status_code >= 500:
+        return []
+    soup = BeautifulSoup(res.text, "html.parser")
+    urls: List[str] = []
+    for a in soup.select("a[href]"):
+        href = a.get("href") or ""
+        if href.startswith("/url?") or "duckduckgo.com/l/" in href or "/ck/a" in href:
+            qs = parse_qs(urlparse(href).query)
+            href = qs.get("q", qs.get("uddg", qs.get("u", [href])))[0]
+        href = unquote(href)
+        url = clean_url(href)
+        if not url:
+            continue
+        host = urlparse(url).netloc.lower()
+        if any(bad in host for bad in ["google.", "bing.", "yahoo.", "duckduckgo.", "wikipedia.", "wikidata.", "facebook.", "twitter.", "x.com", "youtube.", "instagram."]):
+            continue
+        if score_official_candidate(url, name, party) > -30:
+            urls.append(url)
+    seen = set()
+    unique = []
+    for u in urls:
+        key = urlparse(u).netloc.lower().removeprefix("www.") + urlparse(u).path.rstrip("/")
+        if key not in seen:
+            seen.add(key)
+            unique.append(u)
+    return sorted(unique, key=lambda u: score_official_candidate(u, name, party), reverse=True)
+
+
+def search_engine_official_search_v5(name: str, party: str) -> Optional[str]:
+    q = f'{name} 公式サイト 国会議員'
+    searches = [
+        "https://duckduckgo.com/html/?" + requests.compat.urlencode({"q": q}),
+        "https://www.bing.com/search?" + requests.compat.urlencode({"q": q}),
+    ]
+    for search_url in searches:
+        for candidate in extract_urls_from_search_html(search_url, name, party)[:5]:
+            valid = validate_official_url(candidate, name)
+            if valid:
+                return valid
+    return None
+
+
+def parse_sangiin_page(url: str) -> List[Member]:
+    text = get_text(url)
+    if not text:
+        return []
+    soup = BeautifulSoup(text, "html.parser")
+    members: List[Member] = []
+    short_to_full = {short: full for full, short in PARTY_SHORT.items()}
+    short_tokens = sorted(short_to_full.keys(), key=len, reverse=True)
+    short_re = "|".join(map(re.escape, short_tokens))
+
+    for tr in soup.select("tr"):
+        cells = [re.sub(r"\s+", " ", c.get_text(" ", strip=True)) for c in tr.select("td,th")]
+        if len(cells) < 3:
+            continue
+        joined = " ".join(cells)
+        pm = re.search(rf"(^|\s)({short_re})(\s|$)", joined) if short_re else None
+        if not pm:
+            continue
+        party = short_to_full.get(pm.group(2), normalize_party(pm.group(2)))
+        for cell in cells[:3]:
+            candidate = clean_name(re.sub(r"（.*?）|\(.*?\)", "", cell))
+            if is_person_name(candidate) and not re.fullmatch(r"[ぁ-んァ-ンー・ 　]+", candidate) and len(candidate) <= 12:
+                members.append(Member("参議院", candidate, party))
+                break
+
+    page_text = soup.get_text("\n")
+    lines = [re.sub(r"\s+", " ", line).strip() for line in page_text.splitlines()]
+    line_re = re.compile(
+        rf"^([一-龥々〆ヵヶぁ-んァ-ンー・ 　]{{2,40}})\s+"
+        rf"([ぁ-んァ-ンー・ 　]{{2,80}})\s+"
+        rf"({short_re})\s+"
+        rf"(.*?)\s+令和\d+年\d+月\d+日"
+    )
+    for line in lines:
+        m = line_re.match(line)
+        if not m:
+            continue
+        members.append(Member("参議院", clean_name(m.group(1)), short_to_full.get(m.group(3), normalize_party(m.group(3)))))
+
+    return list({(m.chamber, name_key(m.name)): m for m in members if m.name}.values())
+
+
+def get_sangiin_members() -> List[Member]:
+    candidate_urls = [
+        "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm",
+        "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/giin.htm",
+    ]
+    candidate_urls += [
+        f"https://www.sangiin.go.jp/japanese/joho1/kousei/giin/{n}/giin.htm"
+        for n in range(230, 214, -1)
+        if n != 221
+    ]
+    best: List[Member] = []
+    best_url = None
+    for url in candidate_urls:
+        members = parse_sangiin_page(url)
+        if len(members) > len(best):
+            best = members
+            best_url = url
+        if len(best) >= 240:
+            break
+    if len(best) >= 50:
+        print(f"Sangiin source: {best_url} ({len(best)} members)", flush=True)
+        return best
+    wiki = get_sangiin_members_from_wikipedia()
+    return wiki if len(wiki) > len(best) else best
+
+
+def enrich_member(member: Member) -> Member:
+    override = OFFICIAL_URL_OVERRIDES.get(name_key(member.name)) or OFFICIAL_URL_OVERRIDES.get(member.name)
+    if override:
+        member.official_url = validate_official_url(override, member.name) or override
+        member.official_url_source = "manual_override"
+
+    title, wiki_url = search_wikipedia(member.name, member.chamber)
+    member.wikipedia_title = title
+    member.wikipedia_url = wiki_url
+
+    if not member.official_url and title:
+        qid = get_wikidata_qid(title)
+        if qid:
+            url = get_official_website_from_wikidata(qid)
+            if url:
+                member.official_url = validate_official_url(url, member.name)
+                member.official_url_source = "wikidata_p856"
+
+    if not member.official_url:
+        url = get_official_website_from_wikidata_search(member.name)
+        if url:
+            member.official_url = validate_official_url(url, member.name)
+            member.official_url_source = "wikidata_search_p856"
+
+    if not member.official_url and wiki_url:
+        for candidate in extract_candidate_urls_from_wikipedia(wiki_url, member.name, member.party):
+            valid = validate_official_url(candidate, member.name)
+            if valid:
+                member.official_url = valid
+                member.official_url_source = "wikipedia_external"
+                break
+
+    if not member.official_url:
+        candidate = search_engine_official_search_v5(member.name, member.party)
+        if candidate:
+            member.official_url = candidate
+            member.official_url_source = "search_engine_fallback_v5"
+
+    return member
+
+
+def summarize(results: List[ScanResult]) -> dict:
+    total_members = len(results)
+    with_site = sum(1 for r in results if r.official_url)
+    https_count = sum(1 for r in results if r.is_https)
+    gs_count = sum(1 for r in results if r.is_gs)
+    gs_legislator_count = sum(1 for r in results if r.is_gs_legislator_cert)
+    site_seal_count = sum(1 for r in results if r.site_seal_found)
+    target_https = [r for r in results if r.party in GS_SHARE_TARGET_PARTIES and r.is_https]
+    target_gs = [r for r in target_https if r.is_gs]
+    gs_leg_for_seal = [r for r in results if r.is_gs_legislator_cert]
+    seal_on_gs_leg = [r for r in gs_leg_for_seal if r.site_seal_found]
+
+    by_chamber: Dict[str, dict] = {c: {"chamber": c, "total": 0, "with_site": 0, "https": 0, "gs": 0, "seal": 0, "gs_share": 0.0} for c in ["衆議院", "参議院"]}
+    for r in results:
+        row = by_chamber.setdefault(r.chamber or "不明", {"chamber": r.chamber or "不明", "total": 0, "with_site": 0, "https": 0, "gs": 0, "seal": 0, "gs_share": 0.0})
+        row["total"] += 1
+        row["with_site"] += int(bool(r.official_url))
+        row["https"] += int(r.is_https)
+        row["gs"] += int(r.is_gs)
+        row["seal"] += int(r.site_seal_found)
+    for row in by_chamber.values():
+        row["gs_share"] = pct(row["gs"], row["https"])
+
+    by_party: Dict[str, dict] = {p: {"party": p, "total": 0, "with_site": 0, "https": 0, "gs": 0, "seal": 0, "gs_share": 0.0} for p in DISPLAY_PARTIES + ["その他"]}
+    for r in results:
+        party = party_group(r.party)
+        row = by_party.setdefault(party, {"party": party, "total": 0, "with_site": 0, "https": 0, "gs": 0, "seal": 0, "gs_share": 0.0})
+        row["total"] += 1
+        row["with_site"] += int(bool(r.official_url))
+        row["https"] += int(r.is_https)
+        row["gs"] += int(r.is_gs)
+        row["seal"] += int(r.site_seal_found)
+    for row in by_party.values():
+        row["gs_share"] = pct(row["gs"], row["https"])
+    party_order = {p: i for i, p in enumerate(DISPLAY_PARTIES + ["その他"])}
+    return {
+        "generated_at": now_iso(),
+        "total_members": total_members,
+        "with_site": with_site,
+        "https_count": https_count,
+        "gs_count": gs_count,
+        "gs_legislator_count": gs_legislator_count,
+        "site_seal_count": site_seal_count,
+        "gs_share_target_parties": pct(len(target_gs), len(target_https)),
+        "gs_share_target_parties_numerator": len(target_gs),
+        "gs_share_target_parties_denominator": len(target_https),
+        "site_seal_share_gs_legislator_cert": pct(len(seal_on_gs_leg), len(gs_leg_for_seal)),
+        "site_seal_share_gs_legislator_cert_numerator": len(seal_on_gs_leg),
+        "site_seal_share_gs_legislator_cert_denominator": len(gs_leg_for_seal),
+        "by_chamber": [by_chamber[k] for k in ["衆議院", "参議院"] if k in by_chamber],
+        "by_party": sorted(by_party.values(), key=lambda row: party_order.get(row["party"], 999)),
+        "display_parties": DISPLAY_PARTIES + ["その他"],
+    }
+
 if __name__ == "__main__":
     main()
