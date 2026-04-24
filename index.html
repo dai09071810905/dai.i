@@ -5,9 +5,51 @@
   <title>国会議員サイト証明書ダッシュボード</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root{--bg:#0b1020;--bg2:#0f1730;--card:#151b2f;--line:#2b3758;--text:#eef3ff;--muted:#aeb9d6;--accent:#4da3ff;--ok:#1fbf75;--bad:#ff6b6b}
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,var(--bg),var(--bg2) 40%,var(--bg));color:var(--text)}
-    .wrap{max-width:1500px;margin:0 auto;padding:24px}.hero{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}.title{font-size:28px;font-weight:800}.sub,.small,.muted{color:var(--muted)}.sub{margin-top:8px;line-height:1.7;max-width:980px}.small{font-size:12px;margin-top:8px}.btn{background:var(--accent);color:white;border:none;border-radius:12px;padding:12px 18px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(77,163,255,.25)}.btn.secondary{background:#1c2747;box-shadow:none;border:1px solid var(--line)}.actions{display:flex;gap:10px;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0 22px}.card{background:rgba(21,27,47,.92);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.22)}.label{color:var(--muted);font-size:13px;line-height:1.4}.metric{font-size:30px;font-weight:900;margin-top:6px}.section-title{font-size:20px;font-weight:800;margin:28px 0 12px}.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}input,select{background:#121a30;border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:10px}table{width:100%;border-collapse:collapse;background:rgba(21,27,47,.92);border:1px solid var(--line);border-radius:18px;overflow:hidden}th,td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}th{background:#1a2240;text-align:left;position:sticky;top:0}tr:hover td{background:rgba(255,255,255,.03)}.pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}.ok{background:rgba(31,191,117,.15);color:#6ff0aa}.bad{background:rgba(255,107,107,.14);color:#ff9f9f}.note{background:#11192f;border:1px solid var(--line);padding:14px 16px;border-radius:16px;color:var(--muted);line-height:1.7}a{color:#92c5ff}@media(max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){.grid{grid-template-columns:1fr}.title{font-size:22px}}
+    :root{
+      --bg:#0b1020; --bg2:#0f1730; --card:#151b2f; --card2:#11192f;
+      --line:#2b3758; --text:#eef3ff; --muted:#aeb9d6; --accent:#4da3ff;
+      --ok:#1fbf75; --bad:#ff6b6b; --warn:#ffb020;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:linear-gradient(180deg,var(--bg),var(--bg2) 40%,var(--bg));
+      color:var(--text);
+    }
+    .wrap{max-width:1540px;margin:0 auto;padding:24px}
+    .hero{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}
+    .title{font-size:28px;font-weight:900}
+    .sub{color:var(--muted);margin-top:8px;line-height:1.7;max-width:1000px}
+    .small,.muted{color:var(--muted)}
+    .small{font-size:12px;margin-top:8px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{background:var(--accent);color:white;border:none;border-radius:12px;padding:12px 18px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(77,163,255,.25)}
+    .btn.secondary{background:#1c2747;box-shadow:none;border:1px solid var(--line)}
+    .note{background:var(--card2);border:1px solid var(--line);padding:14px 16px;border-radius:16px;color:var(--muted);line-height:1.7;margin:14px 0}
+    .warning{border-color:rgba(255,176,32,.55);color:#ffd071;background:rgba(255,176,32,.08)}
+    .metric-section{margin:22px 0 26px}
+    .metric-heading{font-size:18px;font-weight:900;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+    .metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .card{background:rgba(21,27,47,.92);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+    .label{color:var(--muted);font-size:13px;line-height:1.45}
+    .metric{font-size:30px;font-weight:950;margin-top:6px;letter-spacing:.2px}
+    .metric-sub{font-size:12px;color:var(--muted);margin-top:6px}
+    .section-title{font-size:20px;font-weight:900;margin:30px 0 12px}
+    .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
+    input,select{background:#121a30;border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:10px}
+    table{width:100%;border-collapse:collapse;background:rgba(21,27,47,.92);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+    th,td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+    th{background:#1a2240;text-align:left;position:sticky;top:0}
+    tr:hover td{background:rgba(255,255,255,.035)}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
+    .ok{background:rgba(31,191,117,.15);color:#6ff0aa}
+    .bad{background:rgba(255,107,107,.14);color:#ff9f9f}
+    .warn{background:rgba(255,176,32,.14);color:#ffd071}
+    a{color:#92c5ff}
+    code{color:#d7e8ff}
+    @media(max-width:1100px){.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:640px){.metric-grid{grid-template-columns:1fr}.title{font-size:22px}}
   </style>
 </head>
 <body>
@@ -15,32 +57,326 @@
   <div class="hero">
     <div>
       <div class="title">国会議員サイト証明書ダッシュボード</div>
-      <div class="sub">現職国会議員の公式サイト候補をもとに、HTTPS導入、GlobalSign証明書、サイトシール掲載を集計します。</div>
+      <div class="sub">
+        現職国会議員の公式サイト候補をもとに、HTTPS導入、GlobalSign証明書、サイトシール掲載を集計します。
+      </div>
       <div class="small" id="generatedAt">最終更新: -</div>
     </div>
-    <div class="actions"><button class="btn" id="reloadBtn">最新データを再読み込み</button><button class="btn secondary" id="openDataBtn">data.jsonを開く</button></div>
+    <div class="actions">
+      <button class="btn" id="reloadBtn">最新データを再読み込み</button>
+      <button class="btn secondary" id="openDataBtn">data.jsonを開く</button>
+    </div>
   </div>
-  <div class="note">GSシェアの母数は「自由民主党・立憲民主党・れいわ新選組・国民民主党」所属かつHTTPS導入サイトです。党別集計とプルダウンは、指定5党＋その他に集約します。</div>
-  <div class="grid" id="summaryGrid"></div>
-  <div class="section-title">院別集計</div><div id="chamberTable"></div>
-  <div class="section-title">党別集計</div><div id="partyTable"></div>
+
+  <div class="note">
+    党別集計とプルダウンは、<code>自由民主党・国民民主党・立憲民主党・れいわ新選組・中道改革連合・その他</code> に集約します。
+    <code>減税日本・ゆうこく連合</code> は <code>その他</code> に含めます。
+  </div>
+  <div id="qualityWarning"></div>
+
+  <div id="summarySections"></div>
+
+  <div class="section-title">院別集計</div>
+  <div id="chamberTable"></div>
+
+  <div class="section-title">党別集計</div>
+  <div id="partyTable"></div>
+
   <div class="section-title">議員別明細</div>
-  <div class="toolbar"><input id="searchBox" placeholder="名前・党名・URL・発行者で検索"><select id="partySelect"><option value="all">政党：すべて</option></select><select id="filterBox"><option value="all">状態：すべて</option><option value="https">HTTPSあり</option><option value="gs_any">GlobalSign証明書のみ</option><option value="seal">サイトシールあり</option><option value="no_site">サイト未取得</option></select></div>
+  <div class="toolbar">
+    <input id="searchBox" placeholder="名前・党名・URL・発行者で検索">
+    <select id="partySelect"><option value="all">政党：すべて</option></select>
+    <select id="filterBox">
+      <option value="all">状態：すべて</option>
+      <option value="https">HTTPSあり</option>
+      <option value="gs_any">GlobalSign証明書のみ</option>
+      <option value="seal">サイトシールあり</option>
+      <option value="no_site">サイト未取得</option>
+    </select>
+  </div>
   <div id="detailTable"></div>
 </div>
+
 <script>
-let DATA={summary:{by_party:[],by_chamber:[],display_parties:[]},results:[]};
-const yen=v=>v??0, pct=v=>`${v??0}%`, safe=v=>(v===null||v===undefined||v==="")?"-":String(v);
-function pill(flag,yes,no){return flag?`<span class="pill ok">${yes}</span>`:`<span class="pill bad">${no}</span>`}
-function renderSummary(s){const items=[["現職議員数 合計",yen(s.total_members)],["現職議員数 衆議院",yen((s.by_chamber||[]).find(r=>r.chamber==="衆議院")?.total)],["現職議員数 参議院",yen((s.by_chamber||[]).find(r=>r.chamber==="参議院")?.total)],["サイト取得数",yen(s.with_site)],["HTTPSサイト数",yen(s.https_count)],["GS証明書数 合計",yen(s.gs_count)],["GSシェア",`${pct(s.gs_share_target_parties)} (${yen(s.gs_share_target_parties_numerator)}/${yen(s.gs_share_target_parties_denominator)})`],["サイトシール掲載率",`${pct(s.site_seal_share_gs_legislator_cert)} (${yen(s.site_seal_share_gs_legislator_cert_numerator)}/${yen(s.site_seal_share_gs_legislator_cert_denominator)})`],["サイトシール数",yen(s.site_seal_count)]];summaryGrid.innerHTML=items.map(([l,v])=>`<div class="card"><div class="label">${l}</div><div class="metric">${v}</div></div>`).join("")}
-function table(headers,rows){return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`}
-function renderChamberTable(rows){chamberTable.innerHTML=table(["院","現職議員数","サイト取得","HTTPS","GS証明書","GSシェア","サイトシール"],(rows||[]).map(r=>`<tr><td>${safe(r.chamber)}</td><td>${yen(r.total)}</td><td>${yen(r.with_site)}</td><td>${yen(r.https)}</td><td>${yen(r.gs)}</td><td>${pct(r.gs_share)}</td><td>${yen(r.seal)}</td></tr>`).join(""))}
-function renderPartyTable(rows){partyTable.innerHTML=table(["党名","現職議員数","サイト取得","HTTPS","GS証明書","GSシェア","サイトシール"],(rows||[]).map(r=>`<tr><td>${safe(r.party)}</td><td>${yen(r.total)}</td><td>${yen(r.with_site)}</td><td>${yen(r.https)}</td><td>${yen(r.gs)}</td><td>${pct(r.gs_share)}</td><td>${yen(r.seal)}</td></tr>`).join(""))}
-function renderPartySelect(){const select=partySelect,current=select.value;const parties=(DATA.summary?.display_parties||DATA.summary?.by_party?.map(r=>r.party)||[]).filter(Boolean);select.innerHTML=`<option value="all">政党：すべて</option>`+parties.map(p=>`<option value="${p}">${p}</option>`).join("");if(parties.includes(current))select.value=current}
-function filteredResults(){const q=searchBox.value.trim().toLowerCase(), filter=filterBox.value, p=partySelect.value;return (DATA.results||[]).filter(r=>{if(p!=="all"&&(r.party_group||r.party)!==p)return false;const hit=!q||[r.name,r.party,r.party_group,r.chamber,r.official_url,r.final_url,r.cert_subject_o,r.cert_issuer_o,r.cert_issuer_cn,r.official_url_source].filter(Boolean).join(" ").toLowerCase().includes(q);if(!hit)return false;if(filter==="https")return !!r.is_https;if(filter==="gs_any")return !!r.is_gs;if(filter==="seal")return !!r.site_seal_found;if(filter==="no_site")return !r.official_url;return true})}
-function renderDetailTable(){const rows=filteredResults();detailTable.innerHTML=table(["院","氏名","党","集計区分","サイト","HTTPS","GS","サイトシール","Subject O","Issuer","URL取得元","備考"],rows.map(r=>{const u=r.final_url||r.official_url;const site=u?`<a href="${u}" target="_blank" rel="noopener">公式サイト</a>`:`<span class="muted">-</span>`;const issuer=[r.cert_issuer_o,r.cert_issuer_cn].filter(Boolean).join(" / ")||"-";const notes=Array.isArray(r.notes)&&r.notes.length?r.notes.join("<br>"):"-";return `<tr><td>${safe(r.chamber)}</td><td>${safe(r.name)}</td><td>${safe(r.party)}</td><td>${safe(r.party_group)}</td><td>${site}</td><td>${pill(r.is_https,"HTTPS","なし")}</td><td>${pill(r.is_gs,"GS","非GS")}</td><td>${pill(r.site_seal_found,"あり","なし")}</td><td>${safe(r.cert_subject_o)}</td><td>${issuer}</td><td>${safe(r.official_url_source)}</td><td>${notes}</td></tr>`}).join(""))}
-async function loadData(){const res=await fetch(`./data.json?t=${Date.now()}`,{cache:"no-store"});if(!res.ok)throw new Error(`data.json の読み込みに失敗: ${res.status}`);DATA=await res.json();generatedAt.textContent=`最終更新: ${DATA.summary?.generated_at||DATA.generated_at||"-"}`;renderSummary(DATA.summary||{});renderChamberTable(DATA.summary?.by_chamber||[]);renderPartyTable(DATA.summary?.by_party||[]);renderPartySelect();renderDetailTable()}
-reloadBtn.addEventListener("click",async()=>{try{await loadData();alert("最新の data.json を再読み込みしました。")}catch(e){alert(e.message)}});openDataBtn.addEventListener("click",()=>window.open("./data.json","_blank"));searchBox.addEventListener("input",renderDetailTable);filterBox.addEventListener("change",renderDetailTable);partySelect.addEventListener("change",renderDetailTable);loadData().catch(err=>{summaryGrid.innerHTML=`<div class="card" style="grid-column:1/-1"><div class="label">エラー</div><div style="margin-top:8px">${err.message}</div><div class="small" style="margin-top:8px">同じフォルダに data.json を置いてください。</div></div>`});
+let DATA = { summary:{by_party:[],by_chamber:[],display_parties:[]}, results:[] };
+
+const DISPLAY_PARTIES = ["自由民主党","国民民主党","立憲民主党","れいわ新選組","中道改革連合","その他"];
+const yen = v => v ?? 0;
+const pct = v => `${v ?? 0}%`;
+const safe = v => (v === null || v === undefined || v === "") ? "-" : String(v);
+const hasRows = arr => Array.isArray(arr) && arr.length > 0;
+
+function normalizeParty(party){
+  const p = safe(party).replace(/\s+/g,"").replace(/[（）()]/g,"");
+  const map = {
+    "自民":"自由民主党","自由民主":"自由民主党","自由民主党":"自由民主党","自民党":"自由民主党",
+    "国民":"国民民主党","国民民主":"国民民主党","国民民主党":"国民民主党",
+    "立民":"立憲民主党","立憲":"立憲民主党","立憲民主":"立憲民主党","立憲民主党":"立憲民主党",
+    "れいわ":"れいわ新選組","れいわ新選組":"れいわ新選組","れ新":"れいわ新選組",
+    "中道改革連合":"中道改革連合",
+    "減税日本・ゆうこく連合":"その他"
+  };
+  return map[p] || safe(party);
+}
+
+function partyGroup(party){
+  const p = normalizeParty(party);
+  return DISPLAY_PARTIES.includes(p) && p !== "その他" ? p : "その他";
+}
+
+function stdResult(r){
+  const party = r.party ?? r["党"] ?? "";
+  const chamber = r.chamber ?? r["院"] ?? "";
+  const notes = r.notes ?? r["注釈"] ?? [];
+  return {
+    ...r,
+    name: r.name ?? r["名前"] ?? "",
+    party,
+    party_group: partyGroup(r.party_group ?? party),
+    chamber: (chamber === "衆議院" || chamber === "参議院") ? chamber : (chamber || "不明"),
+    official_url: r.official_url ?? null,
+    final_url: r.final_url ?? null,
+    notes: Array.isArray(notes) ? notes : [String(notes)]
+  };
+}
+
+function emptyChamberRow(chamber){
+  return {chamber,total:0,with_site:0,https:0,gs:0,seal:0,gs_share:0};
+}
+
+function emptyPartyRow(party){
+  return {party,total:0,with_site:0,https:0,gs:0,seal:0,gs_share:0};
+}
+
+function addToRow(row, r){
+  row.total += 1;
+  row.with_site += r.official_url ? 1 : 0;
+  row.https += r.is_https ? 1 : 0;
+  row.gs += r.is_gs ? 1 : 0;
+  row.seal += r.site_seal_found ? 1 : 0;
+}
+
+function finalizeRow(row){
+  row.gs_share = row.https ? Math.round(row.gs / row.https * 1000) / 10 : 0;
+  return row;
+}
+
+function summaryFromResults(results){
+  const byChamber = {"衆議院":emptyChamberRow("衆議院"),"参議院":emptyChamberRow("参議院")};
+  const byParty = Object.fromEntries(DISPLAY_PARTIES.map(p => [p, emptyPartyRow(p)]));
+
+  for(const r of results){
+    const chamber = (r.chamber === "衆議院" || r.chamber === "参議院") ? r.chamber : "不明";
+    if(!byChamber[chamber]) byChamber[chamber] = emptyChamberRow(chamber);
+    addToRow(byChamber[chamber], r);
+
+    const pg = partyGroup(r.party_group ?? r.party);
+    if(!byParty[pg]) byParty[pg] = emptyPartyRow(pg);
+    addToRow(byParty[pg], r);
+  }
+
+  const total = results.length;
+  const https = results.filter(r => r.is_https).length;
+  const gs = results.filter(r => r.is_gs).length;
+  const seal = results.filter(r => r.site_seal_found).length;
+  const withSite = results.filter(r => r.official_url).length;
+  const target = results.filter(r => ["自由民主党","立憲民主党","れいわ新選組","国民民主党"].includes(normalizeParty(r.party)) && r.is_https);
+  const targetGs = target.filter(r => r.is_gs);
+  const gsLeg = results.filter(r => r.is_gs_legislator_cert);
+  const sealOnGsLeg = gsLeg.filter(r => r.site_seal_found);
+
+  return {
+    total_members: total,
+    with_site: withSite,
+    https_count: https,
+    gs_count: gs,
+    site_seal_count: seal,
+    gs_share_target_parties: target.length ? Math.round(targetGs.length / target.length * 1000) / 10 : 0,
+    gs_share_target_parties_numerator: targetGs.length,
+    gs_share_target_parties_denominator: target.length,
+    site_seal_share_gs_legislator_cert: gsLeg.length ? Math.round(sealOnGsLeg.length / gsLeg.length * 1000) / 10 : 0,
+    site_seal_share_gs_legislator_cert_numerator: sealOnGsLeg.length,
+    site_seal_share_gs_legislator_cert_denominator: gsLeg.length,
+    by_chamber: Object.values(byChamber).map(finalizeRow),
+    by_party: DISPLAY_PARTIES.map(p => finalizeRow(byParty[p] || emptyPartyRow(p))),
+    display_parties: DISPLAY_PARTIES
+  };
+}
+
+function normalizeData(raw){
+  const results = (raw.results || raw["結果"] || []).map(stdResult);
+  let summary = raw.summary || raw["まとめ"] || {};
+
+  const chamberTotal = (summary.by_chamber || []).reduce((a,r)=>a + yen(r.total), 0);
+  const partyNames = (summary.by_party || []).map(r => r.party);
+  const needsFallback =
+    !summary ||
+    !hasRows(summary.by_chamber) ||
+    (results.length > 0 && chamberTotal === 0) ||
+    !hasRows(summary.by_party) ||
+    partyNames.some(p => p === "減税日本・ゆうこく連合");
+
+  if(needsFallback){
+    const rebuilt = summaryFromResults(results);
+    summary = {...rebuilt, ...summary};
+    summary.by_chamber = rebuilt.by_chamber;
+    summary.by_party = rebuilt.by_party;
+    summary.display_parties = DISPLAY_PARTIES;
+    for(const k of ["total_members","with_site","https_count","gs_count","site_seal_count","gs_share_target_parties","gs_share_target_parties_numerator","gs_share_target_parties_denominator","site_seal_share_gs_legislator_cert","site_seal_share_gs_legislator_cert_numerator","site_seal_share_gs_legislator_cert_denominator"]){
+      if(summary[k] === undefined || summary[k] === null || (k === "total_members" && summary[k] === 0 && results.length > 0)) summary[k] = rebuilt[k];
+    }
+  }
+
+  summary.by_chamber = ["衆議院","参議院"].map(ch => {
+    return (summary.by_chamber || []).find(r => r.chamber === ch) || emptyChamberRow(ch);
+  });
+  summary.by_party = DISPLAY_PARTIES.map(p => {
+    return (summary.by_party || []).find(r => r.party === p) || emptyPartyRow(p);
+  });
+  summary.display_parties = DISPLAY_PARTIES;
+
+  return {generated_at: raw.generated_at, summary, results};
+}
+
+function pill(flag, yes, no){
+  return flag ? `<span class="pill ok">${yes}</span>` : `<span class="pill bad">${no}</span>`;
+}
+
+function metricCard(label, value, sub=""){
+  return `<div class="card"><div class="label">${label}</div><div class="metric">${value}</div>${sub ? `<div class="metric-sub">${sub}</div>` : ""}</div>`;
+}
+
+function metricSection(title, items){
+  return `<section class="metric-section"><div class="metric-heading">${title}</div><div class="metric-grid">${items.join("")}</div></section>`;
+}
+
+function renderSummary(s){
+  const lower = (s.by_chamber || []).find(r => r.chamber === "衆議院") || emptyChamberRow("衆議院");
+  const upper = (s.by_chamber || []).find(r => r.chamber === "参議院") || emptyChamberRow("参議院");
+
+  summarySections.innerHTML = [
+    metricSection("議員数", [
+      metricCard("現職議員数 合計", yen(s.total_members)),
+      metricCard("現職議員数 衆議院", yen(lower.total)),
+      metricCard("現職議員数 参議院", yen(upper.total)),
+    ]),
+    metricSection("公式サイト・HTTPS", [
+      metricCard("サイト取得数", yen(s.with_site)),
+      metricCard("HTTPSサイト数", yen(s.https_count), "GlobalSign以外の証明書も含む"),
+    ]),
+    metricSection("証明書・GlobalSign", [
+      metricCard("GS証明書数 合計", yen(s.gs_count)),
+      metricCard("GSシェア", `${pct(s.gs_share_target_parties)} (${yen(s.gs_share_target_parties_numerator)}/${yen(s.gs_share_target_parties_denominator)})`, "母数：指定4党かつHTTPS導入サイト"),
+    ]),
+    metricSection("サイトシール", [
+      metricCard("サイトシール数", yen(s.site_seal_count)),
+      metricCard("サイトシール掲載率", `${pct(s.site_seal_share_gs_legislator_cert)} (${yen(s.site_seal_share_gs_legislator_cert_numerator)}/${yen(s.site_seal_share_gs_legislator_cert_denominator)})`, "母数：GS国会議員用証明書利用サイト"),
+    ]),
+  ].join("");
+
+  const bothZero = yen(lower.total) === 0 && yen(upper.total) === 0 && yen(s.total_members) > 0;
+  const anyZero = yen(lower.total) === 0 || yen(upper.total) === 0;
+  qualityWarning.innerHTML = anyZero ? `
+    <div class="note warning">
+      注意：衆議院または参議院の件数が0です。国会議員は必ずどちらかの院に所属するため、
+      Python側の取得失敗または古いdata.jsonの可能性があります。<code>--self-test</code> と件数ガードを有効にしてください。
+    </div>` : "";
+}
+
+function table(headers, rows){
+  return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderChamberTable(rows){
+  chamberTable.innerHTML = table(
+    ["院","現職議員数","サイト取得","HTTPS","GS証明書","GSシェア","サイトシール"],
+    (rows || []).map(r => `<tr>
+      <td>${safe(r.chamber)}</td><td>${yen(r.total)}</td><td>${yen(r.with_site)}</td>
+      <td>${yen(r.https)}</td><td>${yen(r.gs)}</td><td>${pct(r.gs_share)}</td><td>${yen(r.seal)}</td>
+    </tr>`).join("")
+  );
+}
+
+function renderPartyTable(rows){
+  partyTable.innerHTML = table(
+    ["党名","現職議員数","サイト取得","HTTPS","GS証明書","GSシェア","サイトシール"],
+    (rows || []).map(r => `<tr>
+      <td>${safe(r.party)}</td><td>${yen(r.total)}</td><td>${yen(r.with_site)}</td>
+      <td>${yen(r.https)}</td><td>${yen(r.gs)}</td><td>${pct(r.gs_share)}</td><td>${yen(r.seal)}</td>
+    </tr>`).join("")
+  );
+}
+
+function renderPartySelect(){
+  const current = partySelect.value;
+  partySelect.innerHTML = `<option value="all">政党：すべて</option>` + DISPLAY_PARTIES.map(p => `<option value="${p}">${p}</option>`).join("");
+  if(DISPLAY_PARTIES.includes(current)) partySelect.value = current;
+}
+
+function filteredResults(){
+  const q = searchBox.value.trim().toLowerCase();
+  const filter = filterBox.value;
+  const p = partySelect.value;
+  return (DATA.results || []).filter(r => {
+    if(p !== "all" && partyGroup(r.party_group || r.party) !== p) return false;
+    const hit = !q || [
+      r.name, r.party, r.party_group, r.chamber, r.official_url, r.final_url,
+      r.cert_subject_o, r.cert_issuer_o, r.cert_issuer_cn, r.official_url_source, r.party_profile_url
+    ].filter(Boolean).join(" ").toLowerCase().includes(q);
+    if(!hit) return false;
+    if(filter === "https") return !!r.is_https;
+    if(filter === "gs_any") return !!r.is_gs;
+    if(filter === "seal") return !!r.site_seal_found;
+    if(filter === "no_site") return !r.official_url;
+    return true;
+  });
+}
+
+function renderDetailTable(){
+  const rows = filteredResults();
+  detailTable.innerHTML = table(
+    ["院","氏名","党","集計区分","サイト","HTTPS","GS","サイトシール","Subject O","Issuer","URL取得元","備考"],
+    rows.map(r => {
+      const u = r.final_url || r.official_url;
+      const site = u ? `<a href="${u}" target="_blank" rel="noopener">公式サイト</a>` : `<span class="muted">-</span>`;
+      const issuer = [r.cert_issuer_o, r.cert_issuer_cn].filter(Boolean).join(" / ") || "-";
+      const notes = Array.isArray(r.notes) && r.notes.length ? r.notes.join("<br>") : "-";
+      return `<tr>
+        <td>${safe(r.chamber)}</td><td>${safe(r.name)}</td><td>${safe(r.party)}</td>
+        <td>${safe(partyGroup(r.party_group || r.party))}</td><td>${site}</td>
+        <td>${pill(r.is_https,"HTTPS","なし")}</td><td>${pill(r.is_gs,"GS","非GS")}</td>
+        <td>${pill(r.site_seal_found,"あり","なし")}</td><td>${safe(r.cert_subject_o)}</td>
+        <td>${issuer}</td><td>${safe(r.official_url_source)}</td><td>${notes}</td>
+      </tr>`;
+    }).join("")
+  );
+}
+
+async function loadData(){
+  const res = await fetch(`./data.json?t=${Date.now()}`, {cache:"no-store"});
+  if(!res.ok) throw new Error(`data.json の読み込みに失敗: ${res.status}`);
+  DATA = normalizeData(await res.json());
+
+  generatedAt.textContent = `最終更新: ${DATA.summary?.generated_at || DATA.generated_at || "-"}`;
+  renderSummary(DATA.summary || {});
+  renderChamberTable(DATA.summary?.by_chamber || []);
+  renderPartyTable(DATA.summary?.by_party || []);
+  renderPartySelect();
+  renderDetailTable();
+}
+
+reloadBtn.addEventListener("click", async () => {
+  try{ await loadData(); alert("最新の data.json を再読み込みしました。"); }
+  catch(e){ alert(e.message); }
+});
+openDataBtn.addEventListener("click", () => window.open("./data.json", "_blank"));
+searchBox.addEventListener("input", renderDetailTable);
+filterBox.addEventListener("change", renderDetailTable);
+partySelect.addEventListener("change", renderDetailTable);
+
+loadData().catch(err => {
+  summarySections.innerHTML = `<div class="card"><div class="label">エラー</div><div style="margin-top:8px">${err.message}</div><div class="small">同じフォルダに data.json を置いてください。</div></div>`;
+});
 </script>
 </body>
 </html>
