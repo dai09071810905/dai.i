@@ -1,67 +1,33 @@
+name: update-dashboard
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "20 0 * * *"
-
-permissions:
-  contents: write
+    - cron: "0 0 * * *"
 
 jobs:
-  update-data:
+  run:
     runs-on: ubuntu-latest
-    # 30分だと全議員の公式サイト探索 + SSL確認で足りないため延長
     timeout-minutes: 120
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests beautifulsoup4
+      - run: pip install requests beautifulsoup4
 
-      - name: Run self test
-        run: |
-          python scan_politicians.py --self-test
+      # URL収集
+      - run: python collect_urls.py
 
-      - name: Run scan script
-        run: |
-          python scan_politicians.py --debug-name 坂本竜太郎 --enable-search-fallback --enrich-workers 12 --scan-workers 32
+      # SSLチェック
+      - run: python scan_ssl.py
 
-      - name: Check data.json exists
-        run: |
-          if [ ! -f data.json ]; then
-            echo "data.json not generated"
-            exit 1
-          fi
-          python - <<'PY'
-          import json, sys
-          d=json.load(open('data.json', encoding='utf-8'))
-          by={r['chamber']:r['total'] for r in d['summary'].get('by_chamber', [])}
-          print('by_chamber=', by)
-          print('with_site=', d['summary'].get('with_site'))
-          print('https_count=', d['summary'].get('https_count'))
-          if by.get('衆議院',0) < 300 or by.get('参議院',0) < 200:
-              sys.exit('member count is too low; stop commit')
-          PY
-
-      - name: Commit & Push if changed
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data.json
-          if git diff --cached --quiet; then
-            echo "No changes"
-          else
-            git commit -m "Update dashboard data"
-            git push
-          fi
+      - run: |
+          git config user.name bot
+          git config user.email bot@bot.com
+          git add *.json
+          git commit -m "update" || echo "no change"
+          git push
