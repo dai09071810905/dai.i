@@ -31,3 +31,5 @@ jobs:
           git add *.json
           git commit -m "update" || echo "no change"
           git push
+
+- run: pip install requests beautifulsoup4 lxml
