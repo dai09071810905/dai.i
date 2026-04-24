@@ -1,44 +1,34 @@
+<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
   <title>国会議員サイト証明書ダッシュボード</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root{
-      --bg:#0b1020; --bg2:#0f1730; --card:#151b2f; --line:#2b3758;
-      --text:#eef3ff; --muted:#aeb9d6; --accent:#4da3ff; --ok:#1fbf75;
-      --warn:#ffb020; --bad:#ff6b6b;
-    }
+    :root{--bg:#0b1020;--bg2:#0f1730;--card:#151b2f;--line:#2b3758;--text:#eef3ff;--muted:#aeb9d6;--accent:#4da3ff;--ok:#1fbf75;--bad:#ff6b6b}
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,var(--bg),var(--bg2) 40%,var(--bg));color:var(--text)}
     .wrap{max-width:1500px;margin:0 auto;padding:24px}
     .hero{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}
     .title{font-size:28px;font-weight:800}
-    .sub{color:var(--muted);margin-top:8px;line-height:1.7;max-width:980px}
-    .small{font-size:12px;color:var(--muted);margin-top:8px}
+    .sub,.small,.note{color:var(--muted)}
+    .sub{margin-top:8px;line-height:1.7;max-width:980px}.small{font-size:12px;margin-top:8px}
     .btn{background:var(--accent);color:white;border:none;border-radius:12px;padding:12px 18px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(77,163,255,.25)}
     .btn.secondary{background:#1c2747;box-shadow:none;border:1px solid var(--line)}
-    .grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin:18px 0 22px}
+    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0 22px}
     .card{background:rgba(21,27,47,.92);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
-    .label{color:var(--muted);font-size:13px;line-height:1.4}
-    .metric{font-size:30px;font-weight:900;margin-top:6px}
+    .label{color:var(--muted);font-size:13px;line-height:1.4}.metric{font-size:30px;font-weight:900;margin-top:6px}
     .section-title{font-size:20px;font-weight:800;margin:28px 0 12px}
     .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
     input,select{background:#121a30;border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:10px}
     table{width:100%;border-collapse:collapse;background:rgba(21,27,47,.92);border:1px solid var(--line);border-radius:18px;overflow:hidden}
     th,td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
-    th{background:#1a2240;text-align:left;position:sticky;top:0}
-    tr:hover td{background:rgba(255,255,255,.03)}
+    th{background:#1a2240;text-align:left;position:sticky;top:0}tr:hover td{background:rgba(255,255,255,.03)}
     .pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
-    .ok{background:rgba(31,191,117,.15);color:#6ff0aa}
-    .warn{background:rgba(255,176,32,.14);color:#ffd071}
-    .bad{background:rgba(255,107,107,.14);color:#ff9f9f}
-    .muted{color:var(--muted)}
-    .note{background:#11192f;border:1px solid var(--line);padding:14px 16px;border-radius:16px;color:var(--muted);line-height:1.7}
-    a{color:#92c5ff}
-    .actions{display:flex;gap:10px;flex-wrap:wrap}
-    @media (max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
-    @media (max-width:640px){.grid{grid-template-columns:1fr}.title{font-size:22px}}
+    .ok{background:rgba(31,191,117,.15);color:#6ff0aa}.bad{background:rgba(255,107,107,.14);color:#ff9f9f}.muted{color:var(--muted)}
+    .note{background:#11192f;border:1px solid var(--line);padding:14px 16px;border-radius:16px;line-height:1.7}
+    a{color:#92c5ff}.actions{display:flex;gap:10px;flex-wrap:wrap}
+    @media (max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));}}@media (max-width:640px){.grid{grid-template-columns:1fr}.title{font-size:22px}}
   </style>
 </head>
 <body>
@@ -46,9 +36,7 @@
   <div class="hero">
     <div>
       <div class="title">国会議員サイト証明書ダッシュボード</div>
-      <div class="sub">
-        現職国会議員の公式サイト候補をもとに、HTTPS導入、GlobalSign証明書、国会議員用証明書らしきもの、サイトシール掲載を集計します。
-      </div>
+      <div class="sub">現職国会議員の公式サイト候補をもとに、HTTPS導入、GlobalSign証明書、サイトシール掲載を集計します。</div>
       <div class="small" id="generatedAt">最終更新: -</div>
     </div>
     <div class="actions">
@@ -58,8 +46,7 @@
   </div>
 
   <div class="note">
-    <code>data.json</code> を読み込んで表示します。GSシェアの母数は「自由民主党・立憲民主党・れいわ新選組・国民民主党」所属かつHTTPS導入サイトです。<br>
-    サイトシール掲載率の母数は「GS国会議員用証明書を利用しているサイト数」です。
+    <code>data.json</code> を読み込んで表示します。党別集計と政党プルダウンは「自由民主党・国民民主党・立憲民主党・れいわ新選組・中道改革連合・その他」に集約します。
   </div>
 
   <div class="grid" id="summaryGrid"></div>
@@ -77,7 +64,6 @@
     <select id="filterBox">
       <option value="all">状態：すべて</option>
       <option value="https">HTTPSあり</option>
-      <option value="gs_leg">GS国会議員用のみ</option>
       <option value="gs_any">GlobalSign証明書のみ</option>
       <option value="seal">サイトシールあり</option>
       <option value="no_site">サイト未取得</option>
@@ -87,15 +73,13 @@
 </div>
 
 <script>
-let DATA = { summary:{by_party:[],by_chamber:[]}, results:[] };
-
+let DATA = { summary:{by_party:[],by_chamber:[],display_parties:[]}, results:[] };
+const PARTY_GROUPS = ["自由民主党","国民民主党","立憲民主党","れいわ新選組","中道改革連合","その他"];
 const yen = v => v ?? 0;
 const pct = v => `${v ?? 0}%`;
 const safe = v => (v === null || v === undefined || v === "") ? "-" : String(v);
-
-function pill(flag, okText="Yes", noText="No"){
-  return flag ? `<span class="pill ok">${okText}</span>` : `<span class="pill bad">${noText}</span>`;
-}
+function groupParty(p){ return PARTY_GROUPS.includes(p) ? p : "その他"; }
+function pill(flag, okText="Yes", noText="No"){return flag ? `<span class="pill ok">${okText}</span>` : `<span class="pill bad">${noText}</span>`;}
 
 function renderSummary(s){
   const items = [
@@ -106,70 +90,47 @@ function renderSummary(s){
     ["HTTPSサイト数", yen(s.https_count)],
     ["GS証明書数 合計", yen(s.gs_count)],
     ["GSシェア", `${pct(s.gs_share_target_parties)} (${yen(s.gs_share_target_parties_numerator)}/${yen(s.gs_share_target_parties_denominator)})`],
-    ["GS国会議員用証明書数", yen(s.gs_legislator_count)],
     ["サイトシール掲載率", `${pct(s.site_seal_share_gs_legislator_cert)} (${yen(s.site_seal_share_gs_legislator_cert_numerator)}/${yen(s.site_seal_share_gs_legislator_cert_denominator)})`],
     ["サイトシール数", yen(s.site_seal_count)],
   ];
-
-  document.getElementById("summaryGrid").innerHTML = items.map(([label,val]) => `
-    <div class="card"><div class="label">${label}</div><div class="metric">${val}</div></div>
-  `).join("");
+  document.getElementById("summaryGrid").innerHTML = items.map(([label,val]) => `<div class="card"><div class="label">${label}</div><div class="metric">${val}</div></div>`).join("");
 }
 
 function renderChamberTable(rows){
-  let html = `<table><thead><tr>
-    <th>院</th><th>現職議員数</th><th>サイト取得</th><th>HTTPS</th><th>GS証明書</th><th>GSシェア</th><th>GS国会議員用</th><th>サイトシール</th>
-  </tr></thead><tbody>`;
-
+  let html = `<table><thead><tr><th>院</th><th>現職議員数</th><th>サイト取得</th><th>HTTPS</th><th>GS証明書</th><th>GSシェア</th><th>サイトシール</th></tr></thead><tbody>`;
   for(const r of rows || []){
-    html += `<tr>
-      <td>${safe(r.chamber)}</td><td>${yen(r.total)}</td><td>${yen(r.with_site)}</td><td>${yen(r.https)}</td>
-      <td>${yen(r.gs)}</td><td>${pct(r.gs_share)}</td><td>${yen(r.gs_leg)}</td><td>${yen(r.seal)}</td>
-    </tr>`;
+    html += `<tr><td>${safe(r.chamber)}</td><td>${yen(r.total)}</td><td>${yen(r.with_site)}</td><td>${yen(r.https)}</td><td>${yen(r.gs)}</td><td>${pct(r.gs_share)}</td><td>${yen(r.seal)}</td></tr>`;
   }
-  html += `</tbody></table>`;
-  document.getElementById("chamberTable").innerHTML = html;
+  document.getElementById("chamberTable").innerHTML = html + `</tbody></table>`;
 }
 
 function renderPartyTable(rows){
-  let html = `<table><thead><tr>
-    <th>党名</th><th>現職議員数</th><th>サイト取得</th><th>HTTPS</th><th>GS証明書</th><th>GSシェア</th><th>GS国会議員用</th><th>サイトシール</th>
-  </tr></thead><tbody>`;
-
-  for(const r of rows || []){
-    html += `<tr>
-      <td>${safe(r.party)}</td><td>${yen(r.total)}</td><td>${yen(r.with_site)}</td><td>${yen(r.https)}</td>
-      <td>${yen(r.gs)}</td><td>${pct(r.gs_share)}</td><td>${yen(r.gs_leg)}</td><td>${yen(r.seal)}</td>
-    </tr>`;
+  const map = new Map((rows || []).map(r => [r.party, r]));
+  const ordered = PARTY_GROUPS.map(p => map.get(p) || {party:p,total:0,with_site:0,https:0,gs:0,gs_share:0,seal:0});
+  let html = `<table><thead><tr><th>党名</th><th>現職議員数</th><th>サイト取得</th><th>HTTPS</th><th>GS証明書</th><th>GSシェア</th><th>サイトシール</th></tr></thead><tbody>`;
+  for(const r of ordered){
+    html += `<tr><td>${safe(r.party)}</td><td>${yen(r.total)}</td><td>${yen(r.with_site)}</td><td>${yen(r.https)}</td><td>${yen(r.gs)}</td><td>${pct(r.gs_share)}</td><td>${yen(r.seal)}</td></tr>`;
   }
-  html += `</tbody></table>`;
-  document.getElementById("partyTable").innerHTML = html;
+  document.getElementById("partyTable").innerHTML = html + `</tbody></table>`;
 }
 
 function renderPartySelect(){
   const select = document.getElementById("partySelect");
   const current = select.value;
-  const parties = [...new Set((DATA.results || []).map(r => r.party).filter(Boolean))].sort();
-  select.innerHTML = `<option value="all">政党：すべて</option>` + parties.map(p => `<option value="${p}">${p}</option>`).join("");
-  if(parties.includes(current)) select.value = current;
+  select.innerHTML = `<option value="all">政党：すべて</option>` + PARTY_GROUPS.map(p => `<option value="${p}">${p}</option>`).join("");
+  if(["all", ...PARTY_GROUPS].includes(current)) select.value = current;
 }
 
 function filteredResults(){
   const q = document.getElementById("searchBox").value.trim().toLowerCase();
   const filter = document.getElementById("filterBox").value;
   const party = document.getElementById("partySelect").value;
-
   return (DATA.results || []).filter(r => {
-    if(party !== "all" && r.party !== party) return false;
-
-    const hit = !q || [
-      r.name, r.party, r.chamber, r.official_url, r.final_url, r.cert_subject_o,
-      r.cert_issuer_o, r.cert_issuer_cn, r.official_url_source
-    ].filter(Boolean).join(" ").toLowerCase().includes(q);
-
+    const pg = r.party_group || groupParty(r.party);
+    if(party !== "all" && pg !== party) return false;
+    const hit = !q || [r.name,r.party,pg,r.chamber,r.official_url,r.final_url,r.cert_subject_o,r.cert_issuer_o,r.cert_issuer_cn,r.official_url_source].filter(Boolean).join(" ").toLowerCase().includes(q);
     if(!hit) return false;
     if(filter === "https") return !!r.is_https;
-    if(filter === "gs_leg") return !!r.is_gs_legislator_cert;
     if(filter === "gs_any") return !!r.is_gs;
     if(filter === "seal") return !!r.site_seal_found;
     if(filter === "no_site") return !r.official_url;
@@ -179,37 +140,21 @@ function filteredResults(){
 
 function renderDetailTable(){
   const rows = filteredResults();
-
-  let html = `<table><thead><tr>
-    <th>院</th><th>氏名</th><th>党</th><th>サイト</th><th>HTTPS</th><th>GS国会議員用</th><th>GS</th>
-    <th>サイトシール</th><th>Subject O</th><th>Issuer</th><th>URL取得元</th><th>備考</th>
-  </tr></thead><tbody>`;
-
+  let html = `<table><thead><tr><th>院</th><th>氏名</th><th>党</th><th>集計区分</th><th>サイト</th><th>HTTPS</th><th>GS</th><th>サイトシール</th><th>Subject O</th><th>Issuer</th><th>URL取得元</th><th>備考</th></tr></thead><tbody>`;
   for(const r of rows){
     const siteUrl = r.final_url || r.official_url;
     const site = siteUrl ? `<a href="${siteUrl}" target="_blank" rel="noopener">公式サイト</a>` : `<span class="muted">-</span>`;
     const issuer = [r.cert_issuer_o, r.cert_issuer_cn].filter(Boolean).join(" / ") || "-";
     const notes = Array.isArray(r.notes) && r.notes.length ? r.notes.join("<br>") : "-";
-
-    html += `<tr>
-      <td>${safe(r.chamber)}</td><td>${safe(r.name)}</td><td>${safe(r.party)}</td><td>${site}</td>
-      <td>${pill(r.is_https, "HTTPS", "なし")}</td>
-      <td>${pill(r.is_gs_legislator_cert, "該当", "非該当")}</td>
-      <td>${pill(r.is_gs, "GS", "非GS")}</td>
-      <td>${pill(r.site_seal_found, "あり", "なし")}</td>
-      <td>${safe(r.cert_subject_o)}</td><td>${issuer}</td><td>${safe(r.official_url_source)}</td><td>${notes}</td>
-    </tr>`;
+    html += `<tr><td>${safe(r.chamber)}</td><td>${safe(r.name)}</td><td>${safe(r.party)}</td><td>${safe(r.party_group || groupParty(r.party))}</td><td>${site}</td><td>${pill(r.is_https,"HTTPS","なし")}</td><td>${pill(r.is_gs,"GS","非GS")}</td><td>${pill(r.site_seal_found,"あり","なし")}</td><td>${safe(r.cert_subject_o)}</td><td>${issuer}</td><td>${safe(r.official_url_source)}</td><td>${notes}</td></tr>`;
   }
-
-  html += `</tbody></table>`;
-  document.getElementById("detailTable").innerHTML = html;
+  document.getElementById("detailTable").innerHTML = html + `</tbody></table>`;
 }
 
 async function loadData(){
   const res = await fetch(`./data.json?t=${Date.now()}`, { cache: "no-store" });
   if(!res.ok) throw new Error(`data.json の読み込みに失敗: ${res.status}`);
   DATA = await res.json();
-
   document.getElementById("generatedAt").textContent = `最終更新: ${DATA.summary?.generated_at || DATA.generated_at || "-"}`;
   renderSummary(DATA.summary || {});
   renderChamberTable(DATA.summary?.by_chamber || []);
@@ -217,24 +162,12 @@ async function loadData(){
   renderPartySelect();
   renderDetailTable();
 }
-
-document.getElementById("reloadBtn").addEventListener("click", async () => {
-  try{ await loadData(); alert("最新の data.json を再読み込みしました。"); }
-  catch(e){ alert(e.message); }
-});
+document.getElementById("reloadBtn").addEventListener("click", async () => {try{ await loadData(); alert("最新の data.json を再読み込みしました。"); }catch(e){ alert(e.message); }});
 document.getElementById("openDataBtn").addEventListener("click", () => window.open("./data.json", "_blank"));
 document.getElementById("searchBox").addEventListener("input", renderDetailTable);
 document.getElementById("filterBox").addEventListener("change", renderDetailTable);
 document.getElementById("partySelect").addEventListener("change", renderDetailTable);
-
-loadData().catch(err => {
-  document.getElementById("summaryGrid").innerHTML = `
-    <div class="card" style="grid-column:1/-1">
-      <div class="label">エラー</div>
-      <div style="margin-top:8px">${err.message}</div>
-      <div class="small" style="margin-top:8px">同じフォルダに data.json を置いてください。</div>
-    </div>`;
-});
+loadData().catch(err => {document.getElementById("summaryGrid").innerHTML = `<div class="card" style="grid-column:1/-1"><div class="label">エラー</div><div style="margin-top:8px">${err.message}</div><div class="small" style="margin-top:8px">同じフォルダに data.json を置いてください。</div></div>`;});
 </script>
 </body>
 </html>
