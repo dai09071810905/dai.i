@@ -24,7 +24,7 @@
       background:linear-gradient(180deg,var(--bg),var(--bg2) 40%,var(--bg));
       color:var(--text);
     }
-    .wrap{max-width:1400px;margin:0 auto;padding:24px}
+    .wrap{max-width:1500px;margin:0 auto;padding:24px}
     .hero{
       display:flex;
       gap:16px;
@@ -34,7 +34,7 @@
       margin-bottom:18px
     }
     .title{font-size:28px;font-weight:800}
-    .sub{color:var(--muted);margin-top:8px;line-height:1.7;max-width:950px}
+    .sub{color:var(--muted);margin-top:8px;line-height:1.7;max-width:980px}
     .small{font-size:12px;color:var(--muted);margin-top:8px}
     .btn{
       background:var(--accent);
@@ -53,7 +53,7 @@
     }
     .grid{
       display:grid;
-      grid-template-columns:repeat(5,minmax(0,1fr));
+      grid-template-columns:repeat(4,minmax(0,1fr));
       gap:14px;
       margin:18px 0 22px
     }
@@ -64,8 +64,23 @@
       padding:16px;
       box-shadow:0 8px 24px rgba(0,0,0,.22)
     }
-    .label{color:var(--muted);font-size:13px}
+    .card.wide{grid-column:span 2}
+    .label{color:var(--muted);font-size:13px;line-height:1.5}
     .metric{font-size:30px;font-weight:900;margin-top:6px}
+    .mini{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+      margin-top:10px
+    }
+    .miniBox{
+      background:#11192f;
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px
+    }
+    .miniLabel{font-size:12px;color:var(--muted)}
+    .miniMetric{font-size:22px;font-weight:900;margin-top:4px}
     .section-title{font-size:20px;font-weight:800;margin:28px 0 12px}
     .toolbar{
       display:flex;
@@ -126,9 +141,12 @@
     .actions{display:flex;gap:10px;flex-wrap:wrap}
     @media (max-width:1100px){
       .grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .card.wide{grid-column:span 2}
     }
     @media (max-width:640px){
       .grid{grid-template-columns:1fr;}
+      .card.wide{grid-column:span 1}
+      .mini{grid-template-columns:1fr}
       .title{font-size:22px}
     }
   </style>
@@ -139,8 +157,8 @@
     <div>
       <div class="title">国会議員サイト証明書ダッシュボード</div>
       <div class="sub">
-        現職国会議員の公式サイト候補をもとに、証明書発行元、GlobalSign 利用有無、
-        国会議員向け証明書らしきものか、サイトシール掲載有無を集計表示します。
+        現職国会議員の公式サイト候補をもとに、衆議院・参議院・合計別の件数、
+        HTTPS導入数、GlobalSign証明書数、党別GSシェア、サイトシール掲載率を集計表示します。
       </div>
       <div class="small" id="generatedAt">最終更新: -</div>
     </div>
@@ -151,8 +169,9 @@
   </div>
 
   <div class="note">
-    このページは <code>data.json</code> を読み込んで表示します。<br>
-    画面の見た目は固定で、裏側の GitHub Actions が定期的に <code>data.json</code> を更新する想定です。
+    GSシェアの母数は「自民党・立憲民主党・れいわ新選組・国民民主党に所属し、HTTPSを導入しているサイト」です。<br>
+    HTTPSサイト数には、Let's Encrypt など GlobalSign 以外の証明書を利用しているサイトも含めます。<br>
+    サイトシール掲載率の母数は「GSの国会議員用証明書を利用しているサイト数」です。
   </div>
 
   <div class="grid" id="summaryGrid"></div>
@@ -162,9 +181,13 @@
 
   <div class="section-title">議員別明細</div>
   <div class="toolbar">
-    <input id="searchBox" placeholder="名前・党名で検索">
+    <input id="searchBox" placeholder="名前・党名・証明書情報で検索">
+    <select id="partySelect">
+      <option value="all">すべての政党</option>
+    </select>
     <select id="filterBox">
       <option value="all">すべて</option>
+      <option value="https">HTTPSサイトのみ</option>
       <option value="gs_leg">GS国会議員用のみ</option>
       <option value="gs_any">GlobalSign証明書のみ</option>
       <option value="seal">サイトシールあり</option>
@@ -175,6 +198,8 @@
 </div>
 
 <script>
+const TARGET_PARTIES = ["自由民主党", "自民党", "立憲民主党", "れいわ新選組", "国民民主党"];
+
 let DATA = {
   summary: {
     total_members: 0,
@@ -183,14 +208,71 @@ let DATA = {
     gs_count: 0,
     gs_legislator_count: 0,
     site_seal_count: 0,
-    gs_share_all_members: 0,
-    gs_share_sites_only: 0,
-    site_seal_share_sites_only: 0,
     by_party: [],
     generated_at: "-"
   },
   results: []
 };
+
+function pct(n, d){
+  if(!d) return "0.0%";
+  return `${((n / d) * 100).toFixed(1)}%`;
+}
+
+function num(v){
+  return Number.isFinite(Number(v)) ? Number(v) : 0;
+}
+
+function isHttps(r){
+  if(typeof r.is_https === "boolean") return r.is_https;
+  if(typeof r.https === "boolean") return r.https;
+  return !!(r.official_url && String(r.official_url).toLowerCase().startsWith("https://"));
+}
+
+function chamberName(v){
+  const s = String(v || "").trim();
+  if(s.includes("参")) return "参議院";
+  if(s.includes("衆")) return "衆議院";
+  return s || "-";
+}
+
+function isTargetParty(party){
+  const p = String(party || "");
+  return TARGET_PARTIES.some(t => p === t || p.includes(t));
+}
+
+function calcSummary(){
+  const rows = DATA.results || [];
+  const total = rows.length || num(DATA.summary?.total_members);
+  const withSite = rows.filter(r => !!r.official_url).length || num(DATA.summary?.with_site);
+  const httpsCount = rows.filter(isHttps).length || num(DATA.summary?.https_count);
+  const gsCount = rows.filter(r => !!r.is_gs).length || num(DATA.summary?.gs_count);
+  const gsLegCount = rows.filter(r => !!r.is_gs_legislator_cert).length || num(DATA.summary?.gs_legislator_count);
+  const sealCount = rows.filter(r => !!r.site_seal_found).length || num(DATA.summary?.site_seal_count);
+
+  const targetHttpsRows = rows.filter(r => isTargetParty(r.party) && isHttps(r));
+  const targetGsRows = targetHttpsRows.filter(r => !!r.is_gs);
+
+  const lower = rows.filter(r => chamberName(r.chamber) === "衆議院");
+  const upper = rows.filter(r => chamberName(r.chamber) === "参議院");
+
+  return {
+    total,
+    withSite,
+    httpsCount,
+    gsCount,
+    gsLegCount,
+    sealCount,
+    targetHttpsCount: targetHttpsRows.length || num(DATA.summary?.gs_share_denominator),
+    targetGsCount: targetGsRows.length || num(DATA.summary?.gs_share_numerator),
+    lowerCount: lower.length,
+    upperCount: upper.length,
+    lowerHttps: lower.filter(isHttps).length,
+    upperHttps: upper.filter(isHttps).length,
+    lowerGs: lower.filter(r => !!r.is_gs).length,
+    upperGs: upper.filter(r => !!r.is_gs).length
+  };
+}
 
 function pill(flag, okText="Yes", noText="No"){
   return flag
@@ -198,35 +280,109 @@ function pill(flag, okText="Yes", noText="No"){
     : `<span class="pill bad">${noText}</span>`;
 }
 
-function renderSummary(s){
+function renderSummary(){
+  const s = calcSummary();
+
   const items = [
-    ["現職議員総数", s.total_members ?? 0],
-    ["サイト取得数", s.with_site ?? 0],
-    ["HTTPSサイト数", s.https_count ?? 0],
-    ["GS証明書数", s.gs_count ?? 0],
-    ["GS国会議員用数", s.gs_legislator_count ?? 0],
-    ["GS国会議員用シェア(全議員)", `${s.gs_share_all_members ?? 0}%`],
-    ["GS国会議員用シェア(サイト取得母数)", `${s.gs_share_sites_only ?? 0}%`],
-    ["サイトシール数", s.site_seal_count ?? 0],
-    ["サイトシールシェア(サイト取得母数)", `${s.site_seal_share_sites_only ?? 0}%`],
+    {
+      label:"現職議員数",
+      value:s.total,
+      wide:true,
+      mini:[
+        ["衆議院", s.lowerCount],
+        ["参議院", s.upperCount],
+        ["合計", s.total]
+      ]
+    },
+    {
+      label:"HTTPSサイト数",
+      value:s.httpsCount,
+      wide:true,
+      mini:[
+        ["衆議院", s.lowerHttps],
+        ["参議院", s.upperHttps],
+        ["合計", s.httpsCount]
+      ]
+    },
+    ["サイト取得数", s.withSite],
+    ["GS証明書数合計", s.gsCount],
+    ["GSシェア", pct(s.targetGsCount, s.targetHttpsCount)],
+    ["GSシェア母数", s.targetHttpsCount],
+    ["GS国会議員用証明書数", s.gsLegCount],
+    ["サイトシール数", s.sealCount],
+    ["サイトシール掲載率", pct(s.sealCount, s.gsLegCount)],
   ];
 
-  document.getElementById("summaryGrid").innerHTML = items.map(([label,val]) => `
-    <div class="card">
-      <div class="label">${label}</div>
-      <div class="metric">${val}</div>
-    </div>
-  `).join("");
+  document.getElementById("summaryGrid").innerHTML = items.map(item => {
+    if(Array.isArray(item)){
+      const [label,val] = item;
+      return `<div class="card">
+        <div class="label">${label}</div>
+        <div class="metric">${val}</div>
+      </div>`;
+    }
+    return `<div class="card ${item.wide ? "wide" : ""}">
+      <div class="label">${item.label}</div>
+      <div class="metric">${item.value}</div>
+      <div class="mini">
+        ${item.mini.map(([l,v]) => `<div class="miniBox"><div class="miniLabel">${l}</div><div class="miniMetric">${v}</div></div>`).join("")}
+      </div>
+    </div>`;
+  }).join("");
 }
 
-function renderPartyTable(rows){
+function buildPartyRows(){
+  const map = new Map();
+
+  for(const r of DATA.results || []){
+    const party = r.party || "不明";
+    if(!map.has(party)){
+      map.set(party, {
+        party,
+        total:0,
+        with_site:0,
+        https:0,
+        gs_leg:0,
+        gs:0,
+        seal:0
+      });
+    }
+    const row = map.get(party);
+    row.total++;
+    if(r.official_url) row.with_site++;
+    if(isHttps(r)) row.https++;
+    if(r.is_gs_legislator_cert) row.gs_leg++;
+    if(r.is_gs) row.gs++;
+    if(r.site_seal_found) row.seal++;
+  }
+
+  const rows = Array.from(map.values());
+  if(rows.length) return rows.sort((a,b) => b.total - a.total || a.party.localeCompare(b.party, "ja"));
+
+  return (DATA.summary?.by_party || []).map(r => ({
+    party:r.party ?? "-",
+    total:num(r.total),
+    with_site:num(r.with_site),
+    https:num(r.https ?? r.https_count),
+    gs_leg:num(r.gs_leg),
+    gs:num(r.gs),
+    seal:num(r.seal)
+  }));
+}
+
+function renderPartyTable(){
+  const rows = buildPartyRows();
+
   let html = `<table><thead><tr>
     <th>党名</th>
     <th>総数</th>
     <th>サイト取得</th>
+    <th>HTTPSサイト数</th>
+    <th>GS証明書数</th>
+    <th>GSシェア</th>
     <th>GS国会議員用</th>
-    <th>GS</th>
     <th>サイトシール</th>
+    <th>サイトシール掲載率</th>
   </tr></thead><tbody>`;
 
   for(const r of rows){
@@ -234,9 +390,12 @@ function renderPartyTable(rows){
       <td>${r.party ?? "-"}</td>
       <td>${r.total ?? 0}</td>
       <td>${r.with_site ?? 0}</td>
-      <td>${r.gs_leg ?? 0}</td>
+      <td>${r.https ?? 0}</td>
       <td>${r.gs ?? 0}</td>
+      <td>${pct(r.gs ?? 0, r.https ?? 0)}</td>
+      <td>${r.gs_leg ?? 0}</td>
       <td>${r.seal ?? 0}</td>
+      <td>${pct(r.seal ?? 0, r.gs_leg ?? 0)}</td>
     </tr>`;
   }
 
@@ -244,16 +403,41 @@ function renderPartyTable(rows){
   document.getElementById("partyTable").innerHTML = html;
 }
 
+function renderPartySelect(){
+  const select = document.getElementById("partySelect");
+  const current = select.value;
+  const parties = Array.from(new Set((DATA.results || []).map(r => r.party).filter(Boolean)))
+    .sort((a,b) => a.localeCompare(b, "ja"));
+
+  select.innerHTML = `<option value="all">すべての政党</option>` +
+    parties.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("");
+
+  if([...select.options].some(o => o.value === current)) select.value = current;
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, m => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
+  }[m]));
+}
+
 function filteredResults(){
   const q = document.getElementById("searchBox").value.trim().toLowerCase();
+  const party = document.getElementById("partySelect").value;
   const filter = document.getElementById("filterBox").value;
 
-  return DATA.results.filter(r => {
+  return (DATA.results || []).filter(r => {
     const hit = !q || [
       r.name, r.party, r.chamber, r.cert_subject_o, r.cert_issuer_o, r.cert_issuer_cn
     ].filter(Boolean).join(" ").toLowerCase().includes(q);
 
     if(!hit) return false;
+    if(party !== "all" && r.party !== party) return false;
+    if(filter === "https") return isHttps(r);
     if(filter === "gs_leg") return !!r.is_gs_legislator_cert;
     if(filter === "gs_any") return !!r.is_gs;
     if(filter === "seal") return !!r.site_seal_found;
@@ -270,6 +454,7 @@ function renderDetailTable(){
     <th>氏名</th>
     <th>党</th>
     <th>サイト</th>
+    <th>HTTPS</th>
     <th>GS国会議員用</th>
     <th>GS</th>
     <th>サイトシール</th>
@@ -287,10 +472,11 @@ function renderDetailTable(){
     const notes = Array.isArray(r.notes) && r.notes.length ? r.notes.join("<br>") : "-";
 
     html += `<tr>
-      <td>${r.chamber ?? "-"}</td>
+      <td>${chamberName(r.chamber)}</td>
       <td>${r.name ?? "-"}</td>
       <td>${r.party ?? "-"}</td>
       <td>${site}</td>
+      <td>${pill(isHttps(r), "HTTPS", "なし")}</td>
       <td>${pill(r.is_gs_legislator_cert, "該当", "非該当")}</td>
       <td>${pill(r.is_gs, "GS", "非GS")}</td>
       <td>${pill(r.site_seal_found, "あり", "なし")}</td>
@@ -316,8 +502,9 @@ async function loadData(){
     "-";
 
   document.getElementById("generatedAt").textContent = `最終更新: ${generatedAt}`;
-  renderSummary(DATA.summary || {});
-  renderPartyTable(DATA.summary?.by_party || []);
+  renderSummary();
+  renderPartySelect();
+  renderPartyTable();
   renderDetailTable();
 }
 
@@ -335,6 +522,7 @@ document.getElementById("openDataBtn").addEventListener("click", () => {
 });
 
 document.getElementById("searchBox").addEventListener("input", renderDetailTable);
+document.getElementById("partySelect").addEventListener("change", renderDetailTable);
 document.getElementById("filterBox").addEventListener("change", renderDetailTable);
 
 loadData().catch(err => {
