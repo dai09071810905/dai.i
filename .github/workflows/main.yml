@@ -17,7 +17,9 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install requests beautifulsoup4
+      # 🔥 ここをまとめる
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
 
       # URL収集
       - run: python collect_urls.py
@@ -31,5 +33,3 @@ jobs:
           git add *.json
           git commit -m "update" || echo "no change"
           git push
-
-- run: pip install requests beautifulsoup4 lxml
