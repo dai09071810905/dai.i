@@ -112,30 +112,44 @@ def get_members():
 
     members = []
 
-    tables = soup.select("table.wikitable")
+    def get_members():
+    import re
 
-    for table in tables:
-        for a in table.select("a[href^='/wiki/']"):
-            name = a.text.strip()
+    url = "https://ja.wikipedia.org/wiki/衆議院議員一覧"
+    html = requests.get(url, headers=HEADERS).text
+    soup = BeautifulSoup(html, "lxml")
 
-            # ノイズ除去
-            if any(x in name for x in [
-                "議員", "選挙", "区", "比例", "年", "月", "日"
-            ]):
-                continue
+    members = []
 
-            # 日本人名っぽいもの
-            if not re.match(r'^[一-龥ぁ-んァ-ンー]+$', name):
-                continue
+    for a in soup.select("a[href^='/wiki/']"):
+        href = a.get("href")
+        name = a.text.strip()
 
-            if len(name) >= 2:
-                members.append(name)
+        # Wikipedia記事リンクだけ
+        if not href.startswith("/wiki/"):
+            continue
+
+        # 除外（これ重要）
+        if any(x in href for x in [
+            "Wikipedia:", "Help:", "File:", "Category:", "Template:"
+        ]):
+            continue
+
+        # 日本人名っぽい
+        if not re.match(r'^[一-龥ぁ-んァ-ンー]+$', name):
+            continue
+
+        # 長さチェック
+        if len(name) < 2 or len(name) > 6:
+            continue
+
+        members.append(name)
 
     members = list(set(members))
-    print(f"議員数: {len(members)}")
+
+    print(f"議員候補数: {len(members)}")
 
     return members
-
 # ------------------------
 # メイン
 # ------------------------
