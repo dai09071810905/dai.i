@@ -973,6 +973,12 @@ def summarize(results: List[ScanResult]) -> dict:
         "by_chamber": [by_chamber[k] for k in ["衆議院", "参議院"] if k in by_chamber],
         "by_party": sorted(by_party.values(), key=lambda row: party_order.get(row["party"], 999)),
         "display_parties": DISPLAY_PARTIES + ["その他"],
+        "data_quality": {
+            "unknown_chamber_count": sum(1 for r in results if r.chamber not in {"衆議院", "参議院"}),
+            "site_not_found_count": sum(1 for r in results if not r.official_url),
+            "expected_chambers": ["衆議院", "参議院"],
+            "party_group_rule": "自由民主党・国民民主党・立憲民主党・れいわ新選組・中道改革連合のみ個別表示。それ以外（減税日本・ゆうこく連合を含む）はその他。",
+        },
     }
 
 
@@ -1007,7 +1013,25 @@ def main() -> None:
         run_self_test()
         return
 
-    members = get_shugiin_members() + get_sangiin_members()
+    # Fail fast: 現職国会議員は必ず衆議院または参議院に所属するため、
+    # どちらかが極端に少ない、または0件の場合は data.json を更新しない。
+    # GitHub Actions上で一時的にWikipedia/参議院ページ取得に失敗した場合、
+    # 0件データで上書きされることを防ぐ。
+    shugiin_members = get_shugiin_members()
+    sangiin_members = get_sangiin_members()
+
+    log(f"Shugiin fetched: {len(shugiin_members)}")
+    log(f"Sangiin fetched: {len(sangiin_members)}")
+
+    min_shugiin = 300
+    min_sangiin = 200
+    if len(shugiin_members) < min_shugiin or len(sangiin_members) < min_sangiin:
+        log("ERROR: 議員一覧の取得件数が少なすぎるため、data.json を更新せず停止します。")
+        log(f"ERROR: 衆議院={len(shugiin_members)}件 / 参議院={len(sangiin_members)}件")
+        log("ERROR: 取得元ページの構造変更、通信失敗、GitHub Actions上の一時的な接続失敗を確認してください。")
+        raise SystemExit(1)
+
+    members = shugiin_members + sangiin_members
     members = sorted({(m.chamber, name_key(m.name)): m for m in members}.values(), key=lambda m: (m.chamber, m.name))
     log(f"Current members fetched: {len(members)}")
 
