@@ -1,6 +1,7 @@
 import requests
 import json
 import time
+import re
 from bs4 import BeautifulSoup
 from urllib.parse import quote
 
@@ -75,7 +76,7 @@ def extract_official_url(html):
         if href and href.startswith("http"):
             return href
 
-    # ② 外部リンク（最重要）
+    # ② 外部リンク（重要）
     for a in soup.select("#外部リンク a[href]"):
         href = a.get("href")
         if href and href.startswith("http"):
@@ -84,7 +85,7 @@ def extract_official_url(html):
     return None
 
 # ------------------------
-# 自民党ページ補完（例）
+# 自民党ページ補完（簡易）
 # ------------------------
 def try_jimin(name):
     try:
@@ -94,7 +95,7 @@ def try_jimin(name):
 
         for a in soup.select("a[href]"):
             href = a.get("href")
-            if href and "http" in href and ".jp" in href:
+            if href and href.startswith("http") and ".jp" in href:
                 return href
     except:
         pass
@@ -102,7 +103,7 @@ def try_jimin(name):
     return None
 
 # ------------------------
-# 議員一覧（簡易）
+# 議員一覧（修正版）
 # ------------------------
 def get_members():
     url = "https://ja.wikipedia.org/wiki/衆議院議員一覧"
@@ -110,12 +111,30 @@ def get_members():
     soup = BeautifulSoup(html, "lxml")
 
     members = []
-    for a in soup.select("a[href^='/wiki/']"):
-        name = a.text.strip()
-        if len(name) >= 2 and "議員" not in name:
-            members.append(name)
 
-    return list(set(members))
+    tables = soup.select("table.wikitable")
+
+    for table in tables:
+        for a in table.select("a[href^='/wiki/']"):
+            name = a.text.strip()
+
+            # ノイズ除去
+            if any(x in name for x in [
+                "議員", "選挙", "区", "比例", "年", "月", "日"
+            ]):
+                continue
+
+            # 日本人名っぽいもの
+            if not re.match(r'^[一-龥ぁ-んァ-ンー]+$', name):
+                continue
+
+            if len(name) >= 2:
+                members.append(name)
+
+    members = list(set(members))
+    print(f"議員数: {len(members)}")
+
+    return members
 
 # ------------------------
 # メイン
@@ -123,8 +142,6 @@ def get_members():
 def main():
     cache = load_cache()
     members = get_members()
-
-    print(f"議員数: {len(members)}")
 
     for name in members:
         if name in cache:
