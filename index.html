@@ -2,7 +2,6 @@ function normalizeData(raw){
 
 let rawResults = [];
 
-// data.json が配列形式の場合
 if (Array.isArray(raw)) {
 rawResults = raw;
 } else {
@@ -46,24 +45,19 @@ const seal =
 return {
   ...r,
 
-  // 基本
   name: r.name ?? r["名前"] ?? "",
   party: party,
   chamber: chamber,
 
-  // URL
   official_url: url,
   final_url: r.final_url ?? url,
 
-  // HTTPS / GS
   is_https: https,
   is_gs: gs,
   site_seal_found: seal,
 
-  // 表示用
   party_group: partyGroup(party),
 
-  // 証明書
   cert_subject_o:
     r.cert_subject_o ??
     "",
@@ -77,12 +71,10 @@ return {
     r.cert_issuer_cn ??
     "",
 
-  // URL取得元
   official_url_source:
     r.official_url_source ??
     "",
 
-  // 備考
   notes:
     Array.isArray(r.notes)
       ? r.notes
