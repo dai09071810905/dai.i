@@ -42,26 +42,26 @@ body{
 }
 
 h1{
-  font-size:32px;
-  margin:0 0 10px;
+  font-size:34px;
+  margin-bottom:8px;
 }
 
 .description{
   color:var(--sub);
-  line-height:1.7;
-  margin-bottom:28px;
+  line-height:1.8;
+  margin-bottom:30px;
 }
 
 .summary{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
   gap:18px;
-  margin-bottom:30px;
+  margin-bottom:40px;
 }
 
 .card{
-  background:var(--card);
-  border-radius:18px;
+  background:#fff;
+  border-radius:20px;
   padding:22px;
   box-shadow:
     0 1px 3px rgba(0,0,0,0.05),
@@ -69,20 +69,21 @@ h1{
 }
 
 .card-label{
-  font-size:13px;
   color:var(--sub);
+  font-size:13px;
 }
 
 .card-value{
-  font-size:34px;
+  font-size:36px;
   font-weight:800;
-  margin-top:8px;
+  margin-top:10px;
 }
 
 .card-sub{
-  margin-top:6px;
-  color:var(--sub);
+  margin-top:8px;
   font-size:13px;
+  color:var(--sub);
+  line-height:1.5;
 }
 
 .section{
@@ -90,33 +91,13 @@ h1{
 }
 
 .section h2{
-  margin-bottom:14px;
-  font-size:22px;
-}
-
-.controls{
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px;
-  margin-bottom:18px;
-}
-
-input,
-select{
-  background:#fff;
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:11px 14px;
-  font-size:14px;
-}
-
-input{
-  min-width:280px;
+  margin-bottom:16px;
+  font-size:24px;
 }
 
 .table-wrap{
   overflow:auto;
-  border-radius:18px;
+  border-radius:20px;
   background:#fff;
   box-shadow:
     0 1px 3px rgba(0,0,0,0.05),
@@ -130,22 +111,16 @@ table{
 
 th{
   background:#f9fafb;
-  color:#374151;
-  font-size:13px;
-  text-align:left;
   padding:14px;
-  position:sticky;
-  top:0;
-  z-index:1;
+  text-align:left;
+  font-size:13px;
   border-bottom:1px solid var(--line);
-  cursor:pointer;
 }
 
 td{
   padding:13px 14px;
   border-bottom:1px solid #f1f1f1;
   font-size:14px;
-  vertical-align:top;
 }
 
 tr:hover{
@@ -181,14 +156,9 @@ a:hover{
   color:#991b1b;
 }
 
-.unknown{
-  background:#e5e7eb;
-  color:#374151;
-}
-
 .highlight{
-  font-weight:800;
   color:var(--blue);
+  font-weight:800;
 }
 
 .rank1{
@@ -204,6 +174,25 @@ a:hover{
 .rank3{
   color:#dc2626;
   font-weight:800;
+}
+
+.controls{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:18px;
+}
+
+input,
+select{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 14px;
+  background:#fff;
+}
+
+input{
+  min-width:280px;
 }
 
 </style>
@@ -222,32 +211,34 @@ GSサイトシール利用状況を自動調査したダッシュボードです
 
 <div class="summary">
 
-  <div class="card">
-    <div class="card-label">総議員数</div>
-    <div class="card-value" id="total">-</div>
-  </div>
+<div class="card">
+<div class="card-label">総議員数</div>
+<div class="card-value" id="total">-</div>
+</div>
 
-  <div class="card">
-    <div class="card-label">SSL利用数</div>
-    <div class="card-value" id="sslCount">-</div>
-    <div class="card-sub" id="sslRate">-</div>
-  </div>
+<div class="card">
+<div class="card-label">SSL利用数</div>
+<div class="card-value" id="sslCount">-</div>
+<div class="card-sub" id="sslRate">-</div>
+</div>
 
-  <div class="card">
-    <div class="card-label">GS利用数</div>
-    <div class="card-value" id="gsCount">-</div>
-  </div>
+<div class="card">
+<div class="card-label">GS利用数</div>
+<div class="card-value" id="gsCount">-</div>
+</div>
 
-  <div class="card">
-    <div class="card-label">GSシェア</div>
-    <div class="card-value" id="gsShare">-</div>
-    <div class="card-sub">SSL利用サイト内シェア</div>
-  </div>
+<div class="card">
+<div class="card-label">GSシェア</div>
+<div class="card-value" id="gsShare">-</div>
+<div class="card-sub">
+自民・れ新・民主・立憲・国民のSSL利用サイト内シェア
+</div>
+</div>
 
-  <div class="card">
-    <div class="card-label">GSサイトシール</div>
-    <div class="card-value" id="sealCount">-</div>
-  </div>
+<div class="card">
+<div class="card-label">GSサイトシール</div>
+<div class="card-value" id="sealCount">-</div>
+</div>
 
 </div>
 
@@ -256,19 +247,73 @@ GSサイトシール利用状況を自動調査したダッシュボードです
 <h2>認証局 シェア</h2>
 
 <div class="table-wrap">
+
 <table>
 
 <thead>
 <tr>
-  <th>認証局</th>
-  <th>件数</th>
-  <th>シェア</th>
+<th>認証局</th>
+<th>件数</th>
+<th>シェア</th>
 </tr>
 </thead>
 
 <tbody id="issuerBody"></tbody>
 
 </table>
+
+</div>
+
+</div>
+
+<div class="section">
+
+<h2>議員一覧</h2>
+
+<div class="controls">
+
+<input
+id="searchInput"
+type="text"
+placeholder="名前・政党・URL検索"
+/>
+
+<select id="houseFilter">
+<option value="">すべての院</option>
+<option value="衆議院">衆議院</option>
+<option value="参議院">参議院</option>
+</select>
+
+<select id="gsFilter">
+<option value="">GSすべて</option>
+<option value="true">GSあり</option>
+<option value="false">GSなし</option>
+</select>
+
+</div>
+
+<div class="table-wrap">
+
+<table>
+
+<thead>
+<tr>
+<th>院</th>
+<th>政党</th>
+<th>氏名</th>
+<th>公式サイト</th>
+<th>HTTPS</th>
+<th>認証局</th>
+<th>GS</th>
+</tr>
+</thead>
+
+<tbody id="tbody"></tbody>
+
+</table>
+
+</div>
+
 </div>
 
 </div>
@@ -277,82 +322,128 @@ GSサイトシール利用状況を自動調査したダッシュボードです
 
 let allData = [];
 
+const badge = (v) => {
+
+  if(v === true){
+    return `<span class="badge yes">あり</span>`;
+  }
+
+  return `<span class="badge no">なし</span>`;
+};
+
 const escapeHtml = (str) => {
+
   return String(str ?? "")
     .replaceAll("&","&amp;")
     .replaceAll("<","&lt;")
     .replaceAll(">","&gt;");
 };
 
+const link = (url) => {
+
+  if(!url){
+    return "-";
+  }
+
+  return `
+    <a href="${escapeHtml(url)}" target="_blank">
+      ${escapeHtml(url)}
+    </a>
+  `;
+};
+
+const simplifyIssuer = (issuer) => {
+
+  if(!issuer){
+    return "不明";
+  }
+
+  const s = issuer.toLowerCase();
+
+  if(s.includes("globalsign")) return "GlobalSign";
+  if(s.includes("let's encrypt")) return "Let's Encrypt";
+  if(s.includes("google trust")) return "Google";
+  if(s.includes("jprs")) return "JPRS";
+  if(s.includes("digicert")) return "DigiCert";
+  if(s.includes("amazon")) return "Amazon";
+  if(s.includes("cybertrust")) return "Cybertrust";
+  if(s.includes("cloudsecure")) return "CloudSecure";
+  if(s.includes("sectigo")) return "Sectigo";
+  if(s.includes("gehirn")) return "Gehirn";
+  if(s.includes("fujissl")) return "FujiSSL";
+  if(s.includes("godaddy")) return "GoDaddy";
+  if(s.includes("secom")) return "SECOM";
+
+  return issuer;
+};
+
+const updateSummary = (data) => {
+
+  const total = data.length;
+
+  const sslRows =
+    data.filter(x => x.https === true);
+
+  const sslCount = sslRows.length;
+
+  const gsCount =
+    data.filter(x => x.gs_cert === true).length;
+
+  const sealCount =
+    data.filter(x => x.gs_seal === true).length;
+
+  const sslRate =
+    ((sslCount / total) * 100).toFixed(1);
+
+  const targetParties = [
+    "自民",
+    "れ新",
+    "民主",
+    "立憲",
+    "国民"
+  ];
+
+  const targetSsl =
+    sslRows.filter(x =>
+      targetParties.includes(x.party)
+    );
+
+  const targetGs =
+    targetSsl.filter(x =>
+      x.gs_cert === true
+    );
+
+  const gsShare =
+    targetSsl.length
+      ? (
+          (targetGs.length / targetSsl.length)
+          * 100
+        ).toFixed(1)
+      : "0.0";
+
+  document.getElementById("total").textContent =
+    total;
+
+  document.getElementById("sslCount").textContent =
+    sslCount;
+
+  document.getElementById("sslRate").textContent =
+    `${sslRate}%`;
+
+  document.getElementById("gsCount").textContent =
+    gsCount;
+
+  document.getElementById("gsShare").textContent =
+    `${gsShare}%`;
+
+  document.getElementById("sealCount").textContent =
+    sealCount;
+};
+
 const renderIssuerStats = (data) => {
-
-  // 認証局名をまとめる
-  const simplifyIssuer = (issuer) => {
-
-    if(!issuer){
-      return "不明";
-    }
-
-    const s = issuer.toLowerCase();
-
-    if(s.includes("globalsign")){
-      return "GlobalSign";
-    }
-
-    if(s.includes("let's encrypt")){
-      return "Let's Encrypt";
-    }
-
-    if(s.includes("google trust")){
-      return "Google Trust Services";
-    }
-
-    if(s.includes("jprs")){
-      return "JPRS";
-    }
-
-    if(s.includes("digicert")){
-      return "DigiCert";
-    }
-
-    if(s.includes("amazon")){
-      return "Amazon";
-    }
-
-    if(s.includes("cybertrust")){
-      return "Cybertrust";
-    }
-
-    if(s.includes("cloudsecure")){
-      return "CloudSecure";
-    }
-
-    if(s.includes("sectigo")){
-      return "Sectigo";
-    }
-
-    if(s.includes("gehirn")){
-      return "Gehirn";
-    }
-
-    if(s.includes("fujissl")){
-      return "FujiSSL";
-    }
-
-    if(s.includes("godaddy")){
-      return "GoDaddy";
-    }
-
-    if(s.includes("secom")){
-      return "SECOM";
-    }
-
-    return issuer;
-  };
 
   const issuerMap = {};
 
-  // HTTPSのみ
   const sslRows =
     data.filter(x => x.https === true);
 
@@ -375,26 +466,18 @@ const renderIssuerStats = (data) => {
           ((count / sslRows.length) * 100)
             .toFixed(1);
 
-        let cls = "";
-
-        // GlobalSign強調
-        if(issuer === "GlobalSign"){
-          cls = "highlight";
-        }
+        const cls =
+          issuer === "GlobalSign"
+            ? "highlight"
+            : "";
 
         return `
           <tr>
             <td class="${cls}">
               ${issuer}
             </td>
-
-            <td>
-              ${count}
-            </td>
-
-            <td>
-              ${share}%
-            </td>
+            <td>${count}</td>
+            <td>${share}%</td>
           </tr>
         `;
       })
@@ -404,6 +487,97 @@ const renderIssuerStats = (data) => {
     html;
 };
 
+const renderTable = (data) => {
+
+  const html = data.map(row => {
+
+    return `
+      <tr>
+        <td>${escapeHtml(row.house)}</td>
+        <td>${escapeHtml(row.party || "-")}</td>
+        <td>${escapeHtml(row.name)}</td>
+        <td>${link(row.official)}</td>
+        <td>${badge(row.https)}</td>
+        <td>${escapeHtml(
+          simplifyIssuer(row.issuer)
+        )}</td>
+        <td>${badge(row.gs_cert)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  document.getElementById("tbody").innerHTML =
+    html;
+};
+
+const getFilteredData = () => {
+
+  const keyword =
+    document.getElementById("searchInput")
+      .value
+      .toLowerCase();
+
+  const house =
+    document.getElementById("houseFilter").value;
+
+  const gs =
+    document.getElementById("gsFilter").value;
+
+  return allData.filter(row => {
+
+    const text = [
+      row.name,
+      row.party,
+      row.official
+    ]
+    .join(" ")
+    .toLowerCase();
+
+    if(keyword && !text.includes(keyword)){
+      return false;
+    }
+
+    if(house && row.house !== house){
+      return false;
+    }
+
+    if(gs && String(row.gs_cert) !== gs){
+      return false;
+    }
+
+    return true;
+  });
+};
+
+const render = () => {
+
+  const data = getFilteredData();
+
+  updateSummary(data);
+
+  renderIssuerStats(data);
+
+  renderTable(data);
+};
+
+const setupEvents = () => {
+
+  for(const id of [
+    "searchInput",
+    "houseFilter",
+    "gsFilter"
+  ]){
+
+    document
+      .getElementById(id)
+      .addEventListener("input", render);
+
+    document
+      .getElementById(id)
+      .addEventListener("change", render);
+  }
+};
+
 const main = async () => {
 
   const res =
@@ -411,7 +585,9 @@ const main = async () => {
 
   allData = await res.json();
 
-  renderIssuerStats(allData);
+  setupEvents();
+
+  render();
 };
 
 main();
