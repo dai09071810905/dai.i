@@ -256,7 +256,7 @@ def get_members() -> list[dict]:
 
     # wikitable の td 内にある WikiLink だけを対象にする
     # ページ全体リンクを走査する旧方式より精度が大幅に向上
-    for a in soup.select('table.wikitable td a[rel="mw:WikiLink"]'):
+    for a in soup.select('table.wikitable td a[href]'):
         title_attr = a.get("title", "").strip()
         href = a.get("href", "")
 
