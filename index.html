@@ -7,7 +7,6 @@
 <title>国会議員 SSL / GlobalSign 調査</title>
 
 <style>
-
 :root{
   --bg:#f4f7fb;
   --card:#ffffff;
@@ -28,7 +27,6 @@ body{
 }
 
 .container{ max-width:1600px; margin:auto; }
-
 h1{ font-size:34px; margin-bottom:8px; }
 
 .description{
@@ -128,7 +126,6 @@ input,select{
 }
 
 input{ min-width:280px; }
-
 </style>
 </head>
 
@@ -251,6 +248,83 @@ GSサイトシール利用状況を自動調査したダッシュボードです
 
 let allData = [];
 
+const ldpPriorityNames = [
+  "石破茂",
+  "森山裕",
+  "小野寺五典",
+  "林芳正",
+  "高市早苗",
+  "萩生田光一",
+  "小泉進次郎",
+  "加藤勝信",
+  "麻生太郎",
+  "菅義偉",
+  "岸田文雄",
+  "茂木敏充",
+  "河野太郎",
+  "西村康稔",
+  "世耕弘成",
+  "稲田朋美",
+  "上川陽子",
+  "野田聖子",
+  "鈴木俊一",
+  "武田良太",
+  "甘利明",
+  "下村博文",
+  "二階俊博"
+];
+
+const getLdpPriority = (row) => {
+  if(row.party !== "自民"){
+    return 9999;
+  }
+
+  const index = ldpPriorityNames.indexOf(row.name);
+
+  if(index >= 0){
+    return index;
+  }
+
+  return 5000;
+};
+
+const sortMembers = (data) => {
+  return [...data].sort((a,b) => {
+
+    const pa = getLdpPriority(a);
+    const pb = getLdpPriority(b);
+
+    if(pa !== pb){
+      return pa - pb;
+    }
+
+    if(a.party === "自民" && b.party !== "自民"){
+      return -1;
+    }
+
+    if(a.party !== "自民" && b.party === "自民"){
+      return 1;
+    }
+
+    const houseOrder = {
+      "衆議院": 1,
+      "参議院": 2
+    };
+
+    const ha = houseOrder[a.house] || 9;
+    const hb = houseOrder[b.house] || 9;
+
+    if(ha !== hb){
+      return ha - hb;
+    }
+
+    return String(a.name || "").localeCompare(
+      String(b.name || ""),
+      "ja"
+    );
+  });
+};
+
 const badge = (v) => {
   if(v === true) return `<span class="badge yes">あり</span>`;
   return `<span class="badge no">なし</span>`;
@@ -291,7 +365,6 @@ const simplifyIssuer = (issuer) => {
 };
 
 const updateSummary = (data) => {
-
   const total = data.length;
   const sslRows = data.filter(x => x.https === true);
   const sslCount = sslRows.length;
@@ -323,11 +396,9 @@ const updateSummary = (data) => {
 };
 
 const renderPartyStats = (data) => {
-
   const partyMap = {};
 
   for(const row of data){
-
     const party = row.party || "不明";
 
     if(!partyMap[party]){
@@ -340,7 +411,6 @@ const renderPartyStats = (data) => {
     }
 
     partyMap[party].total++;
-
     if(row.https === true) partyMap[party].ssl++;
     if(row.gs_cert === true) partyMap[party].gs++;
     if(row.gs_seal === true) partyMap[party].seal++;
@@ -380,7 +450,6 @@ const renderPartyStats = (data) => {
 };
 
 const renderIssuerStats = (data) => {
-
   const issuerMap = {};
   const sslRows = data.filter(x => x.https === true);
 
@@ -425,8 +494,9 @@ const renderIssuerStats = (data) => {
 };
 
 const renderTable = (data) => {
+  const sortedData = sortMembers(data);
 
-  const html = data.map(row => {
+  const html = sortedData.map(row => {
     return `
       <tr>
         <td>${escapeHtml(row.house)}</td>
@@ -444,7 +514,6 @@ const renderTable = (data) => {
 };
 
 const getFilteredData = () => {
-
   const keyword =
     document.getElementById("searchInput").value.toLowerCase();
 
@@ -455,7 +524,6 @@ const getFilteredData = () => {
     document.getElementById("gsFilter").value;
 
   return allData.filter(row => {
-
     const text = [
       row.name,
       row.party,
