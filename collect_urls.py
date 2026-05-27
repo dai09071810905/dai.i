@@ -196,10 +196,6 @@ def extract_official_url(html: str) -> str | None:
 # 自民党サイト フォールバック
 # ──────────────────────────────────────────
 def try_jimin(name: str) -> str | None:
-    """
-    自民党サイトで議員名を検索し、公式プロフィールURLを返す。
-    セレクターは実際の HTML 構造に合わせて複数候補を試みる。
-    """
     search_url = f"https://www.jimin.jp/member/?q={urllib.parse.quote(name)}"
     try:
         res = requests.get(search_url, headers=HEADERS, timeout=10)
@@ -207,20 +203,21 @@ def try_jimin(name: str) -> str | None:
             return None
         soup = BeautifulSoup(res.text, "lxml")
 
-        # 複数セレクターを順に試す（実際の HTML に合わせて要調整）
         for selector in [
             "a.member-link",
             "a.c-member__link",
             ".memberList a[href]",
             ".member-list a[href]",
-            "article a[href]",
+            # ❌ "article a[href]"  ← 削除: 広すぎてナビリンクを返す
         ]:
             a_tag = soup.select_one(selector)
             if a_tag and a_tag.get("href"):
                 href = a_tag["href"]
                 if href.startswith("/"):
                     href = "https://www.jimin.jp" + href
-                return href
+                # ✅ URLに /member/ が含まれるか確認してから返す
+                if "/member/" in href:
+                    return href
     except Exception as e:
         print(f"  [try_jimin] error ({name}): {e}")
     return None
