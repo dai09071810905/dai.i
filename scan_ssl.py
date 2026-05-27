@@ -1,589 +1,229 @@
-import json
-import ssl
-import socket
-import csv
-import requests
-import tempfile
-from datetime import datetime
-from urllib.parse import urlparse
-from email.utils import parsedate_to_datetime
+from __future__ import annotations
 
-MEMBERS_FILE = "members.json"
-URLS_FILE = "urls.json"
-OUT_JSON = "data.json"
-OUT_CSV = "data.csv"
+import json
+import os
+import socket
+import ssl
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from urllib.parse import urlparse, urlunparse
+
+import requests
+import urllib3
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+IN_FILE = Path("urls.json")
+OUT_FILE = Path("data.json")
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; DaiBot/1.0)"
+    "User-Agent": "Mozilla/5.0 (compatible; diet-member-ssl-checker/1.0)"
 }
 
-DISPLAY_PARTIES = [
-    "自由民主党",
-    "国民民主党",
-    "立憲民主党",
-    "れいわ新選組",
-    "中道改革連合",
-    "その他"
-]
+GS_SEAL_HINTS = (
+    "seal.globalsign.com",
+    "ssif1.globalsign.com",
+    "ssif2.globalsign.com",
+    "globalsign.com/siteseal",
+    "globalsign.com/site-seal",
+    "siteseal",
+    "site seal",
+)
 
 
-def load_input():
-    """
-    collect_urls.py の新形式 members.json を優先して読む。
-    なければ旧形式 urls.json を読む。
-    """
-    try:
-        with open(MEMBERS_FILE, encoding="utf-8") as f:
-            members = json.load(f)
-
-        if isinstance(members, list):
-            return members
-    except:
-        pass
-
-    with open(URLS_FILE, encoding="utf-8") as f:
-        urls = json.load(f)
-
-    members = []
-    for name, url in urls.items():
-        members.append({
-            "name": name,
-            "chamber": "不明",
-            "party": "",
-            "wiki_url": "",
-            "official_url": url,
-            "url": url,
-            "official_url_source": "urls.json"
-        })
-
-    return members
+def save_json(path: Path, data: list[dict]) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
 
 
-def normalize_url(url):
+def force_https_url(url: str | None) -> str | None:
     if not url:
         return None
 
-    url = str(url).strip()
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
 
-    if not url:
+    parsed = urlparse(url)
+
+    if not parsed.netloc:
         return None
 
-    if url.startswith("//"):
-        return "https:" + url
-
-    if url.startswith("http://"):
-        return "https://" + url.replace("http://", "", 1)
-
-    if not url.startswith("http://") and not url.startswith("https://"):
-        return "https://" + url
-
-    return url
-
-
-def get_host(url):
-    try:
-        return urlparse(url).hostname
-    except:
-        return None
-
-
-def decode_cert_from_der(der_cert):
-    """
-    DER形式の証明書をPython標準ライブラリで読みやすい辞書へ変換する。
-    """
-    try:
-        pem = ssl.DER_cert_to_PEM_cert(der_cert)
-
-        with tempfile.NamedTemporaryFile("w+", delete=False, suffix=".pem", encoding="utf-8") as tmp:
-            tmp.write(pem)
-            tmp_path = tmp.name
-
-        return ssl._ssl._test_decode_cert(tmp_path)
-    except:
-        return None
-
-
-def get_cert_info(host):
-    """
-    サーバ証明書を取得する。
-    検証エラーでも証明書情報を取れるように、unverified context を使う。
-    """
-    if not host:
-        return None
-
-    try:
-        ctx = ssl._create_unverified_context()
-
-        with socket.create_connection((host, 443), timeout=10) as sock:
-            with ctx.wrap_socket(sock, server_hostname=host) as ssock:
-                der_cert = ssock.getpeercert(binary_form=True)
-
-                if not der_cert:
-                    return None
-
-                cert = decode_cert_from_der(der_cert)
-
-                if not cert:
-                    return None
-
-                cert["_tls_version"] = ssock.version()
-                cert["_cipher"] = ssock.cipher()[0] if ssock.cipher() else ""
-
-                return cert
-    except:
-        return None
-
-
-def name_from_tuple_list(items):
-    """
-    subject / issuer の tuple を dict化する。
-    """
-    parts = {}
-
-    if not items:
-        return parts
-
-    for item in items:
-        for key, value in item:
-            parts[key] = value
-
-    return parts
-
-
-def get_subject_parts(cert):
-    if not cert:
-        return {}
-    return name_from_tuple_list(cert.get("subject"))
-
-
-def get_issuer_parts(cert):
-    if not cert:
-        return {}
-    return name_from_tuple_list(cert.get("issuer"))
-
-
-def get_issuer_name(cert):
-    parts = get_issuer_parts(cert)
-
-    return (
-        parts.get("organizationName")
-        or parts.get("commonName")
-        or ""
+    return urlunparse(
+        (
+            "https",
+            parsed.netloc,
+            parsed.path or "/",
+            "",
+            parsed.query,
+            "",
+        )
     )
 
 
-def get_issuer_cn(cert):
-    parts = get_issuer_parts(cert)
-    return parts.get("commonName") or ""
+def issuer_text(cert: x509.Certificate) -> str:
+    parts: list[str] = []
+
+    for oid in [NameOID.ORGANIZATION_NAME, NameOID.COMMON_NAME]:
+        for attr in cert.issuer.get_attributes_for_oid(oid):
+            if attr.value and attr.value not in parts:
+                parts.append(attr.value)
+
+    return " / ".join(parts) or cert.issuer.rfc4514_string()
 
 
-def get_subject_o(cert):
-    parts = get_subject_parts(cert)
-    return parts.get("organizationName") or ""
+def get_certificate_issuer(url: str | None) -> tuple[bool, str | None, str | None]:
+    """
+    戻り値:
+    - HTTPS証明書を取得できたか
+    - issuer
+    - error
 
+    期限切れや自己署名でも、TLS接続できればissuer取得を試みます。
+    """
+    https_url = force_https_url(url)
 
-def get_subject_cn(cert):
-    parts = get_subject_parts(cert)
-    return parts.get("commonName") or ""
+    if not https_url:
+        return False, None, "official URLなし"
 
+    parsed = urlparse(https_url)
+    host = parsed.hostname
+    port = parsed.port or 443
 
-def cert_not_after(cert):
-    if not cert:
-        return ""
-
-    raw = cert.get("notAfter") or ""
-
-    if not raw:
-        return ""
+    if not host:
+        return False, None, "hostなし"
 
     try:
-        dt = parsedate_to_datetime(raw)
-        return dt.strftime("%Y-%m-%d")
-    except:
-        return raw
+        server_name = host.encode("idna").decode("ascii")
+        context = ssl._create_unverified_context()
+
+        with socket.create_connection((server_name, port), timeout=8) as sock:
+            with context.wrap_socket(sock, server_hostname=server_name) as ssock:
+                der = ssock.getpeercert(binary_form=True)
+
+        if not der:
+            return False, None, "証明書を取得できませんでした"
+
+        cert = x509.load_der_x509_certificate(der)
+
+        return True, issuer_text(cert), None
+
+    except Exception as e:
+        return False, None, str(e)
 
 
-def is_globalsign(cert):
-    if not cert:
-        return False
-
-    issuer = get_issuer_name(cert) + " " + get_issuer_cn(cert)
-    subject = get_subject_o(cert) + " " + get_subject_cn(cert)
-
-    return "GlobalSign" in issuer or "GlobalSign" in subject
-
-
-def check_https_and_html(url):
-    """
-    HTTPSでページHTMLを取得する。
-    失敗した場合はHTTPも試す。
-    """
+def fetch_html(url: str | None) -> str:
     if not url:
-        return False, None, ""
+        return ""
 
-    check_url = normalize_url(url)
+    candidates: list[str] = []
 
-    try:
-        r = requests.get(
-            check_url,
-            headers=HEADERS,
-            timeout=12,
-            allow_redirects=True
-        )
-        return True, r.url, r.text
-    except:
-        pass
+    https_url = force_https_url(url)
 
-    # HTTPSでページ取得できない場合、HTTPも確認
-    try:
-        http_url = check_url.replace("https://", "http://", 1)
-        r = requests.get(
-            http_url,
-            headers=HEADERS,
-            timeout=12,
-            allow_redirects=True
-        )
-        return r.url.startswith("https://"), r.url, r.text
-    except:
-        return False, check_url, ""
+    if https_url:
+        candidates.append(https_url)
+
+    if url not in candidates:
+        candidates.append(url)
+
+    for candidate in candidates:
+        try:
+            res = requests.get(
+                candidate,
+                headers=HEADERS,
+                timeout=12,
+                allow_redirects=True,
+                verify=False,
+            )
+
+            content_type = res.headers.get("content-type", "").lower()
+
+            if res.status_code < 400 and ("html" in content_type or res.text):
+                return res.text or ""
+
+        except Exception:
+            continue
+
+    return ""
 
 
-def has_gs_site_seal(html):
+def has_gs_site_seal(html: str) -> bool:
     if not html:
         return False
 
-    h = html.lower()
+    lower = html.lower()
 
-    keywords = [
-        "globalsign",
-        "seal.globalsign",
-        "ssl.globalsign",
-        "secure.globalsign",
-        "site seal",
-        "sitesell",
-        "gs_noscript",
-        "globalsign.com/seal",
-        "jp.globalsign.com"
-    ]
+    if any(hint in lower for hint in GS_SEAL_HINTS):
+        return "globalsign" in lower or "ssif" in lower or "siteseal" in lower
 
-    return any(k.lower() in h for k in keywords)
+    return "globalsign" in lower and (
+        "seal" in lower or "ssif" in lower or "siteseal" in lower
+    )
 
 
-def normalize_party(party):
-    if not party:
-        return ""
+def scan_one(row: dict) -> dict:
+    official = row.get("official")
 
-    p = str(party).replace(" ", "").replace("　", "")
+    has_https, issuer, cert_error = get_certificate_issuer(official)
 
-    mapping = {
-        "自民": "自由民主党",
-        "自民党": "自由民主党",
-        "自由民主": "自由民主党",
-        "自由民主党": "自由民主党",
-        "国民": "国民民主党",
-        "国民民主": "国民民主党",
-        "国民民主党": "国民民主党",
-        "立民": "立憲民主党",
-        "立憲": "立憲民主党",
-        "立憲民主": "立憲民主党",
-        "立憲民主党": "立憲民主党",
-        "れいわ": "れいわ新選組",
-        "れいわ新選組": "れいわ新選組",
-        "中道改革連合": "中道改革連合",
-        "減税日本・ゆうこく連合": "その他"
-    }
+    html = fetch_html(official)
+    gs_seal = has_gs_site_seal(html)
 
-    return mapping.get(p, party)
-
-
-def party_group(party):
-    p = normalize_party(party)
-
-    if p in DISPLAY_PARTIES and p != "その他":
-        return p
-
-    return "その他"
-
-
-def empty_chamber_row(chamber):
-    return {
-        "chamber": chamber,
-        "total": 0,
-        "with_site": 0,
-        "https": 0,
-        "gs": 0,
-        "seal": 0,
-        "gs_share": 0
-    }
-
-
-def empty_party_row(party):
-    return {
-        "party": party,
-        "total": 0,
-        "with_site": 0,
-        "https": 0,
-        "gs": 0,
-        "seal": 0,
-        "gs_share": 0
-    }
-
-
-def add_to_row(row, r):
-    row["total"] += 1
-    row["with_site"] += 1 if r.get("official_url") else 0
-    row["https"] += 1 if r.get("is_https") else 0
-    row["gs"] += 1 if r.get("is_gs") else 0
-    row["seal"] += 1 if r.get("site_seal_found") else 0
-
-
-def finalize_row(row):
-    if row["https"]:
-        row["gs_share"] = round(row["gs"] / row["https"] * 100, 1)
-    else:
-        row["gs_share"] = 0
-
-    return row
-
-
-def build_summary(results):
-    by_chamber = {
-        "衆議院": empty_chamber_row("衆議院"),
-        "参議院": empty_chamber_row("参議院"),
-        "不明": empty_chamber_row("不明")
-    }
-
-    by_party = {
-        p: empty_party_row(p)
-        for p in DISPLAY_PARTIES
-    }
-
-    for r in results:
-        chamber = r.get("chamber") or "不明"
-
-        if chamber not in by_chamber:
-            by_chamber[chamber] = empty_chamber_row(chamber)
-
-        add_to_row(by_chamber[chamber], r)
-
-        pg = r.get("party_group") or "その他"
-
-        if pg not in by_party:
-            by_party[pg] = empty_party_row(pg)
-
-        add_to_row(by_party[pg], r)
-
-    total_members = len(results)
-    with_site = sum(1 for r in results if r.get("official_url"))
-    https_count = sum(1 for r in results if r.get("is_https"))
-    gs_count = sum(1 for r in results if r.get("is_gs"))
-    site_seal_count = sum(1 for r in results if r.get("site_seal_found"))
-
-    target_parties = ["自由民主党", "立憲民主党", "れいわ新選組", "国民民主党"]
-    target = [
-        r for r in results
-        if normalize_party(r.get("party")) in target_parties and r.get("is_https")
-    ]
-    target_gs = [r for r in target if r.get("is_gs")]
-
-    gs_leg = [r for r in results if r.get("is_gs_legislator_cert")]
-    seal_on_gs_leg = [r for r in gs_leg if r.get("site_seal_found")]
+    issuer_lower = (issuer or "").lower()
+    gs_cert = "globalsign" in issuer_lower
 
     return {
-        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "total_members": total_members,
-        "with_site": with_site,
-        "https_count": https_count,
-        "gs_count": gs_count,
-        "site_seal_count": site_seal_count,
-        "gs_share_target_parties": round(len(target_gs) / len(target) * 100, 1) if target else 0,
-        "gs_share_target_parties_numerator": len(target_gs),
-        "gs_share_target_parties_denominator": len(target),
-        "site_seal_share_gs_legislator_cert": round(len(seal_on_gs_leg) / len(gs_leg) * 100, 1) if gs_leg else 0,
-        "site_seal_share_gs_legislator_cert_numerator": len(seal_on_gs_leg),
-        "site_seal_share_gs_legislator_cert_denominator": len(gs_leg),
-        "by_chamber": [
-            finalize_row(by_chamber["衆議院"]),
-            finalize_row(by_chamber["参議院"]),
-            finalize_row(by_chamber["不明"])
-        ],
-        "by_party": [
-            finalize_row(by_party[p])
-            for p in DISPLAY_PARTIES
-        ],
-        "display_parties": DISPLAY_PARTIES
+        **row,
+        "https": has_https,
+        "issuer": issuer,
+        "gs_cert": gs_cert,
+        "gs_seal": gs_seal,
+        "error": row.get("error") or cert_error,
     }
 
 
-def scan_member(member):
-    name = member.get("name") or member.get("名前") or ""
-    chamber = member.get("chamber") or member.get("院") or "不明"
-    party = member.get("party") or member.get("党") or ""
-    wiki_url = member.get("wiki_url") or ""
-    official_url = member.get("official_url") or member.get("url")
+def main() -> None:
+    if not IN_FILE.exists():
+        raise SystemExit("urls.json がありません。先に python collect_urls.py を実行してください。")
 
-    print("▶", chamber, party, name, official_url)
+    rows = json.loads(IN_FILE.read_text(encoding="utf-8"))
 
-    base = {
-        "name": name,
-        "chamber": chamber,
-        "party": party,
-        "party_group": party_group(party),
-        "wiki_url": wiki_url,
-        "official_url": official_url,
-        "url": official_url,
-        "official_url_source": member.get("official_url_source") or "",
-        "party_profile_url": member.get("party_profile_url") or "",
-        "final_url": None,
-        "is_https": False,
-        "https": False,
-        "cert_exists": False,
-        "is_gs": False,
-        "gs": False,
-        "globalsign_cert": False,
-        "is_gs_legislator_cert": False,
-        "site_seal_found": False,
-        "globalsign_site_seal": False,
-        "cert_subject_o": "",
-        "cert_subject_cn": "",
-        "cert_issuer_o": "",
-        "cert_issuer_cn": "",
-        "issuer": "",
-        "cert_not_after": "",
-        "tls_version": "",
-        "cipher": "",
-        "notes": []
-    }
+    if not isinstance(rows, list):
+        raise SystemExit("urls.json の形式が不正です。")
 
-    if not official_url:
-        base["notes"].append("公式URLなし")
-        return base
+    max_workers = int(os.getenv("MAX_WORKERS", "12"))
 
-    check_url = normalize_url(official_url)
-    input_host = get_host(check_url)
+    results: list[dict] = []
 
-    https_ok, final_url, html = check_https_and_html(check_url)
-    final_host = get_host(final_url) or input_host
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(scan_one, row) for row in rows]
 
-    # リダイレクト後のホストで証明書を取得
-    cert = get_cert_info(final_host)
+        for i, future in enumerate(as_completed(futures), 1):
+            result = future.result()
+            results.append(result)
 
-    if not cert and input_host and input_host != final_host:
-        # 念のため元ホストも確認
-        cert = get_cert_info(input_host)
+            name = result.get("name", "")
+            issuer = result.get("issuer") or "-"
 
-    cert_exists = bool(cert)
+            print(
+                f"[{i}/{len(rows)}] {name} "
+                f"https={result['https']} "
+                f"gs_cert={result['gs_cert']} "
+                f"gs_seal={result['gs_seal']} "
+                f"issuer={issuer}"
+            )
 
-    issuer_o = get_issuer_name(cert)
-    issuer_cn = get_issuer_cn(cert)
-    subject_o = get_subject_o(cert)
-    subject_cn = get_subject_cn(cert)
+            if i % 20 == 0:
+                save_json(OUT_FILE, results)
+                print(f"checkpoint: {len(results)} 件保存")
 
-    is_gs = is_globalsign(cert)
-    seal = has_gs_site_seal(html)
+    results.sort(key=lambda x: (x.get("house") or "", x.get("name") or ""))
 
-    base.update({
-        "final_url": final_url,
-        "is_https": bool(cert_exists or https_ok),
-        "https": bool(cert_exists or https_ok),
-        "cert_exists": cert_exists,
-        "is_gs": is_gs,
-        "gs": is_gs,
-        "globalsign_cert": is_gs,
-        "is_gs_legislator_cert": is_gs,
-        "site_seal_found": seal,
-        "globalsign_site_seal": seal,
-        "cert_subject_o": subject_o,
-        "cert_subject_cn": subject_cn,
-        "cert_issuer_o": issuer_o,
-        "cert_issuer_cn": issuer_cn,
-        "issuer": issuer_o or issuer_cn,
-        "cert_not_after": cert_not_after(cert),
-        "tls_version": cert.get("_tls_version", "") if cert else "",
-        "cipher": cert.get("_cipher", "") if cert else ""
-    })
+    save_json(OUT_FILE, results)
 
-    if not cert_exists:
-        base["notes"].append("証明書取得不可")
-
-    if final_url and final_url != check_url:
-        base["notes"].append("リダイレクトあり")
-
-    print("  HTTPS:", base["is_https"])
-    print("  CA:", base["issuer"])
-    print("  GS証明書:", base["is_gs"])
-    print("  GSサイトシール:", base["site_seal_found"])
-
-    return base
-
-
-def main():
-    members = load_input()
-    results = []
-
-    for i, member in enumerate(members, start=1):
-        print(f"[{i}/{len(members)}]")
-        result = scan_member(member)
-        results.append(result)
-
-        # 途中保存
-        summary = build_summary(results)
-        output = {
-            "generated_at": summary["generated_at"],
-            "summary": summary,
-            "results": results
-        }
-
-        with open(OUT_JSON, "w", encoding="utf-8") as f:
-            json.dump(output, f, ensure_ascii=False, indent=2)
-
-    summary = build_summary(results)
-
-    output = {
-        "generated_at": summary["generated_at"],
-        "summary": summary,
-        "results": results
-    }
-
-    with open(OUT_JSON, "w", encoding="utf-8") as f:
-        json.dump(output, f, ensure_ascii=False, indent=2)
-
-    fieldnames = [
-        "name",
-        "chamber",
-        "party",
-        "party_group",
-        "wiki_url",
-        "official_url",
-        "final_url",
-        "is_https",
-        "cert_exists",
-        "issuer",
-        "cert_issuer_o",
-        "cert_issuer_cn",
-        "cert_subject_o",
-        "cert_subject_cn",
-        "cert_not_after",
-        "is_gs",
-        "site_seal_found",
-        "tls_version",
-        "cipher",
-        "official_url_source",
-        "notes"
-    ]
-
-    with open(OUT_CSV, "w", encoding="utf-8-sig", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for r in results:
-            row = r.copy()
-            row["notes"] = " / ".join(row.get("notes", []))
-            writer.writerow({k: row.get(k, "") for k in fieldnames})
-
-    print("完了")
-    print(f"- {OUT_JSON} 作成")
-    print(f"- {OUT_CSV} 作成")
+    print(f"完了: {OUT_FILE} に {len(results)} 件保存しました")
 
 
 if __name__ == "__main__":
