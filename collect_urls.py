@@ -261,6 +261,10 @@ def get_members() -> list[dict]:
         href = a.get("href", "")
 
         if not title_attr or not href:
+             if not title_attr or not href:
+        continue
+    if not href.startswith("//ja.wikipedia.org/wiki/"):  # ← 追加
+        continue
             continue
 
         # 名前空間リンク除外（ファイル・カテゴリ・選挙区等）
