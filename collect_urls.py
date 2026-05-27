@@ -49,7 +49,8 @@ SKIP_WORDS = re.compile(
     r"|れいわ新選組|参政党|社会民主党|無所属|会派"
 )
 
-NAME_RE = re.compile(r"^[一-龥々ぁ-んァ-ヶーA-Za-z・]{2,14}$")
+# 文字数上限を緩和（14→20）してカタカナ名なども拾う
+NAME_RE = re.compile(r"^[一-龥々ぁ-んァ-ヶーA-Za-z・\s]{2,20}$")
 
 
 def fetch(url: str) -> str | None:
@@ -134,7 +135,6 @@ def collect_members_from_list_page(house: str, list_url: str) -> list[dict]:
                 continue
 
             seen.add(key)
-
             members.append(
                 {
                     "house": house,
@@ -153,7 +153,6 @@ def normalize_external_url(href: str, base_url: str) -> str | None:
         return None
 
     href = urljoin(base_url, href)
-
     parsed = urlparse(href)
 
     if parsed.scheme not in ("http", "https"):
@@ -179,84 +178,69 @@ def normalize_external_url(href: str, base_url: str) -> str | None:
     )
 
 
+def find_section_heading(soup: BeautifulSoup, keywords: list[str]):
+    """見出しテキストでセクションを検索（id属性に依存しない）"""
+    for tag in soup.find_all(["h2", "h3", "h4"]):
+        text = tag.get_text(strip=True)
+        if any(kw in text for kw in keywords):
+            return tag
+    return None
+
+
 def extract_official_url(wiki_html: str, wiki_url: str) -> str | None:
     soup = BeautifulSoup(wiki_html, "lxml")
 
     def valid_links(parent) -> list[str]:
-        urls: list[str] = []
-
         if not parent:
-            return urls
+            return []
+        return [
+            url
+            for a in parent.find_all("a", href=True)
+            if (url := normalize_external_url(a["href"], wiki_url))
+        ]
 
-        for a in parent.find_all("a", href=True):
-            url = normalize_external_url(a["href"], wiki_url)
-            if url:
-                urls.append(url)
+    OFFICIAL_KEYWORDS = ["公式", "ウェブサイト", "ホームページ", "website", "web site", "hp"]
 
-        return urls
-
-    # 1. infobox内の「公式」「ウェブサイト」「ホームページ」行を優先
-    for row in soup.select("table.infobox tr, table.infobox_v2 tr"):
-        label_cell = row.find(["th", "td"])
-        if not label_cell:
-            continue
-
-        label = label_cell.get_text(" ", strip=True).lower()
-
-        if any(
-            k in label
-            for k in ["公式", "ウェブサイト", "ホームページ", "website", "web site", "hp"]
-        ):
-            links = valid_links(row)
-            if links:
-                return links[0]
-
-    # 2. 外部リンクセクションを見る
-    for section_id in ["外部リンク", "External_links", "外部リンク_1"]:
-        target = soup.find(id=section_id)
-        if not target:
-            continue
-
-        heading = (
-            target
-            if target.name in ["h2", "h3", "h4"]
-            else target.find_parent(["h2", "h3", "h4"])
-        )
-
-        if not heading:
-            continue
-
-        # 「公式」と書かれたリンクを優先
-        for sibling in heading.find_next_siblings():
-            if sibling.name in ["h2", "h3"]:
-                break
-
-            if sibling.name not in ["ul", "ol", "div", "p"]:
+    # 1. infobox内の「公式サイト」行を優先
+    #    クラス名を広めに取る（infobox系はすべて対象）
+    for table in soup.select("table[class*='infobox']"):
+        for row in table.find_all("tr"):
+            label_cell = row.find(["th", "td"])
+            if not label_cell:
                 continue
+            label = label_cell.get_text(" ", strip=True).lower()
+            if any(k in label for k in OFFICIAL_KEYWORDS):
+                links = valid_links(row)
+                if links:
+                    return links[0]
 
+    # 2. 外部リンクセクション（idではなく見出しテキストで探す）
+    heading = find_section_heading(
+        soup, ["外部リンク", "External links", "外部リンク一覧"]
+    )
+    if heading:
+        # 「公式」と明示されたリンクを優先
+        for sibling in heading.find_next_siblings():
+            if sibling.name in ["h2", "h3", "h4"]:
+                break
             for a in sibling.find_all("a", href=True):
-                text = a.get_text(" ", strip=True)
+                text = a.get_text(strip=True)
                 href = a.get("href", "")
-
-                if any(
-                    k in text.lower()
-                    for k in ["公式", "ホームページ", "ウェブサイト", "website", "hp"]
-                ):
+                if any(k in text for k in OFFICIAL_KEYWORDS):
                     url = normalize_external_url(href, wiki_url)
                     if url:
                         return url
 
-        # 公式表記がない場合、外部リンクセクションの最初の有効URL
+        # 公式表記なければ最初の有効URL
         for sibling in heading.find_next_siblings():
-            if sibling.name in ["h2", "h3"]:
+            if sibling.name in ["h2", "h3", "h4"]:
                 break
-
             links = valid_links(sibling)
             if links:
                 return links[0]
 
-    # 3. 最後の保険：infobox内の最初の外部URL
-    for table in soup.select("table.infobox, table.infobox_v2"):
+    # 3. 保険：infobox内の最初の外部URL
+    for table in soup.select("table[class*='infobox']"):
         links = valid_links(table)
         if links:
             return links[0]
@@ -282,11 +266,7 @@ def add_official_urls(members: list[dict]) -> list[dict]:
         official = extract_official_url(html, wiki_url)
         member["official"] = official
 
-        if official:
-            print(f"  -> {official}")
-        else:
-            print("  -> 公式URLなし")
-
+        print(f"  -> {official or '公式URLなし'}")
         results.append(member)
 
         if i % 20 == 0:
@@ -306,7 +286,6 @@ def main() -> None:
         for member in collect_members_from_list_page(house, url):
             if member["wiki"] in seen_wiki:
                 continue
-
             seen_wiki.add(member["wiki"])
             members.append(member)
 
@@ -314,7 +293,6 @@ def main() -> None:
 
     results = add_official_urls(members)
     save_json(OUT_FILE, results)
-
     print(f"完了: {OUT_FILE} に {len(results)} 件保存しました")
 
 
