@@ -2,3 +2,5 @@ beautifulsoup4
 requests
 pandas
 openpyxl
+cryptography
+pyopenssl
