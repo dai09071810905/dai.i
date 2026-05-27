@@ -1,4 +1,4 @@
-name: update-dashboard
+name: update.yml
 
 on:
   workflow_dispatch:
