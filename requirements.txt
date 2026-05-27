@@ -1,5 +1,4 @@
-requests
 beautifulsoup4
-lxml
-cryptography
-urllib3
+requests
+pandas
+openpyxl
