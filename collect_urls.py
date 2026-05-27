@@ -32,6 +32,11 @@ LIST_PAGES = [
     ("参議院", "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm"),
 ]
 
+WIKI_FALLBACK_PAGES = [
+    ("衆議院", "https://ja.wikipedia.org/wiki/衆議院議員一覧"),
+    ("参議院", "https://ja.wikipedia.org/wiki/参議院議員一覧"),
+]
+
 OUT_FILE = Path("urls.json")
 
 USE_SEARCH_FALLBACK = False
@@ -58,8 +63,10 @@ PARTY_RULES = [
     ("自由民主党", "自民"),
     ("自民党", "自民"),
     ("自由民主", "自民"),
+    ("自民", "自民"),
     ("立憲民主党", "立憲"),
     ("立憲民主", "立憲"),
+    ("立憲", "立憲"),
     ("日本維新の会", "維新"),
     ("維新", "維新"),
     ("公明党", "公明"),
@@ -104,7 +111,7 @@ def save_json(path: Path, data: list[dict]) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(
         json.dumps(data, ensure_ascii=False, indent=2),
-        encoding="utf-8"
+        encoding="utf-8",
     )
     tmp.replace(path)
 
@@ -112,6 +119,7 @@ def save_json(path: Path, data: list[dict]) -> None:
 def clean_name(value: str) -> str:
     value = value.strip()
     value = re.sub(r"\s*[（(].*$", "", value)
+    value = re.sub(r"\s*\[.*?\]\s*", "", value)
     value = value.replace(" ", "").replace("　", "")
     value = value.replace("\n", "").replace("\r", "")
     return value
@@ -137,66 +145,22 @@ def is_probable_person_name(name: str) -> bool:
         return False
 
     ng_words = [
-        "党",
-        "会派",
-        "委員",
-        "議会",
-        "制度",
-        "政府",
-        "国会",
-        "法律",
-        "法案",
-        "選挙",
-        "比例",
-        "ブロック",
-        "一覧",
-        "カテゴリ",
-        "日本",
-        "政治",
-        "民主制",
-        "主権",
-        "内閣",
-        "行政",
-        "立法",
-        "司法",
-        "天皇",
-        "憲法",
-        "自治",
-        "省",
-        "庁",
-        "局",
-        "県",
-        "都",
-        "府",
-        "道",
-        "市",
-        "区",
-        "町",
-        "村",
-        "免責",
-        "特権",
-        "新緑風会",
-        "沖縄の風",
-        "無所属クラブ",
-        "参議院議長",
-        "衆議院副議長",
-        "議長",
-        "副議長",
-        "チームみらい",
-        "れいわ新選組",
-        "日本維新の会",
-        "日本保守党",
-        "自由民主党",
-        "立憲民主党",
-        "国民民主党",
-        "日本共産党",
-        "社会民主党",
-        "公明党",
-        "参政党",
+        "党", "会派", "委員", "議会", "制度", "政府", "国会",
+        "法律", "法案", "選挙", "比例", "ブロック", "一覧",
+        "カテゴリ", "日本", "政治", "民主制", "主権", "内閣",
+        "行政", "立法", "司法", "天皇", "憲法", "自治",
+        "省", "庁", "局", "県", "都", "府", "道", "市",
+        "区", "町", "村", "免責", "特権", "新緑風会",
+        "沖縄の風", "無所属クラブ", "参議院議長", "衆議院副議長",
+        "議長", "副議長", "チームみらい", "れいわ新選組",
+        "日本維新の会", "日本保守党", "自由民主党", "立憲民主党",
+        "国民民主党", "日本共産党", "社会民主党", "公明党",
+        "参政党", "あ行", "か行", "さ行", "た行", "な行",
+        "は行", "ま行", "や行", "ら行", "わ行",
     ]
 
     for ng in ng_words:
-        if ng in name:
+        if name == ng or ng in name:
             return False
 
     if "/" in name or ":" in name:
@@ -270,11 +234,15 @@ def normalize_wiki_url(href: str) -> str | None:
     return href.split("#", 1)[0]
 
 
-def collect_members_from_list_page(house: str, list_url: str) -> list[dict]:
+def collect_members_from_official_page(house: str, list_url: str) -> list[dict]:
     html = fetch(list_url)
 
     if not html:
-        print(f"{house}: HTML取得失敗")
+        print(f"{house}: 公式ページHTML取得失敗")
+        return []
+
+    if "メンテナンス中" in html or "under maintenance" in html.lower():
+        print(f"{house}: 公式ページがメンテナンス中のためスキップ")
         return []
 
     soup = BeautifulSoup(html, "html.parser")
@@ -282,50 +250,142 @@ def collect_members_from_list_page(house: str, list_url: str) -> list[dict]:
     members: list[dict] = []
     seen: set[tuple[str, str]] = set()
 
-    rows = soup.select("tr")
+    for a in soup.select("a[href]"):
+        href = a.get("href", "")
+        text = a.get_text(" ", strip=True)
+        name = clean_name(text)
 
-    for tr in rows:
-        row_text = tr.get_text(" ", strip=True)
+        if house == "参議院":
+            if "/profile/" not in href:
+                continue
 
-        if not row_text:
+        if house == "衆議院":
+            if not (
+                "itdb_giinprof" in href
+                or "giin" in href.lower()
+                or is_probable_person_name(name)
+            ):
+                continue
+
+        if not is_probable_person_name(name):
             continue
 
-        party = normalize_party(row_text)
+        key = (house, name)
 
-        links = tr.select("a[href]")
+        if key in seen:
+            continue
 
-        for a in links:
-            raw_name = a.get_text(" ", strip=True) or a.get("title", "")
-            name = clean_name(raw_name)
+        seen.add(key)
 
-            if not is_probable_person_name(name):
-                continue
+        parent_text = ""
 
-            href = a.get("href", "")
-            profile_url = urljoin(list_url, href)
+        tr = a.find_parent("tr")
+        if tr:
+            parent_text = tr.get_text(" ", strip=True)
+        else:
+            parent = a.find_parent(["li", "p", "div"])
+            if parent:
+                parent_text = parent.get_text(" ", strip=True)
 
-            key = (house, name)
+        party = normalize_party(parent_text)
+        profile_url = urljoin(list_url, href)
 
-            if key in seen:
-                continue
+        members.append(
+            {
+                "house": house,
+                "party": party,
+                "name": name,
+                "profile": profile_url,
+                "wiki": None,
+                "official": None,
+            }
+        )
 
-            seen.add(key)
-
-            members.append(
-                {
-                    "house": house,
-                    "party": party,
-                    "name": name,
-                    "profile": profile_url,
-                    "wiki": None,
-                    "official": None,
-                }
-            )
-
-            break
-
-    print(f"{house}: 有効議員数 {len(members)} 件")
+    print(f"{house}: 公式ページ 有効議員数 {len(members)} 件")
     return members
+
+
+def collect_members_from_wikipedia(house: str, list_url: str) -> list[dict]:
+    html = fetch(list_url)
+
+    if not html:
+        print(f"{house}: Wikipedia HTML取得失敗")
+        return []
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    members: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+
+    content = soup.select_one("div.mw-parser-output") or soup
+
+    for a in content.select("a[href]"):
+        href = a.get("href", "")
+
+        if any(x in href for x in [
+            "カテゴリ", "Category", "一覧", "Template", "Help:",
+            "Portal:", "File:", "ファイル"
+        ]):
+            continue
+
+        wiki_url = normalize_wiki_url(href)
+
+        if not wiki_url:
+            continue
+
+        title = a.get("title") or a.get_text(" ", strip=True)
+        name = clean_name(title)
+
+        if not is_probable_person_name(name):
+            continue
+
+        key = (house, name)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        tr = a.find_parent("tr")
+        parent_text = tr.get_text(" ", strip=True) if tr else ""
+        party = normalize_party(parent_text)
+
+        members.append(
+            {
+                "house": house,
+                "party": party,
+                "name": name,
+                "profile": None,
+                "wiki": wiki_url,
+                "official": None,
+            }
+        )
+
+    print(f"{house}: Wikipedia 有効議員数 {len(members)} 件")
+    return members
+
+
+def collect_members(house: str, official_url: str) -> list[dict]:
+    official_members = collect_members_from_official_page(house, official_url)
+
+    min_expected = 400 if house == "衆議院" else 200
+
+    if len(official_members) >= min_expected:
+        return official_members
+
+    print(f"{house}: 公式ページ取得数が少ないためWikipediaへフォールバック")
+
+    wiki_url = dict(WIKI_FALLBACK_PAGES).get(house)
+
+    if not wiki_url:
+        return official_members
+
+    wiki_members = collect_members_from_wikipedia(house, wiki_url)
+
+    if len(wiki_members) > len(official_members):
+        return wiki_members
+
+    return official_members
 
 
 def find_wikipedia_page(name: str) -> str | None:
@@ -342,12 +402,8 @@ def find_wikipedia_page(name: str) -> str | None:
     if first:
         return normalize_wiki_url(first.get("href", ""))
 
-    heading = soup.select_one("#firstHeading")
-
-    if heading:
-        title = clean_name(heading.get_text(" ", strip=True))
-        if name in title or title in name:
-            return normalize_wiki_url(search_url.replace("/w/index.php?search=", "/wiki/"))
+    if soup.select_one("#firstHeading"):
+        return normalize_wiki_url("https://ja.wikipedia.org/wiki/" + quote_plus(name))
 
     return None
 
@@ -514,11 +570,12 @@ def add_official_urls(members: list[dict]) -> list[dict]:
         print(f"[{i}/{len(members)}] {name}")
 
         official = MANUAL_OFFICIAL_URLS.get(name)
-        wiki_url = None
+        wiki_url = member.get("wiki")
 
         if not official:
-            wiki_url = find_wikipedia_page(name)
-            member["wiki"] = wiki_url
+            if not wiki_url:
+                wiki_url = find_wikipedia_page(name)
+                member["wiki"] = wiki_url
 
             if wiki_url:
                 wiki_html = fetch(wiki_url, timeout=12)
@@ -549,7 +606,7 @@ def main() -> None:
     seen: set[tuple[str, str]] = set()
 
     for house, url in LIST_PAGES:
-        collected = collect_members_from_list_page(house, url)
+        collected = collect_members(house, url)
 
         for member in collected:
             key = (member["house"], member["name"])
