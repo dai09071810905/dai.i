@@ -10,8 +10,13 @@ from urllib.parse import urljoin, urlparse, urlunparse
 import requests
 from bs4 import BeautifulSoup
 
+
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; diet-member-ssl-checker/1.0)"
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/125.0.0.0 Safari/537.36"
+    )
 }
 
 LIST_PAGES = [
@@ -49,18 +54,21 @@ SKIP_WORDS = re.compile(
     r"|れいわ新選組|参政党|社会民主党|無所属|会派"
 )
 
-# 文字数上限を緩和（14→20）してカタカナ名なども拾う
 NAME_RE = re.compile(r"^[一-龥々ぁ-んァ-ヶーA-Za-z・\s]{2,20}$")
 
 
 def fetch(url: str) -> str | None:
-    try:
-        res = requests.get(url, headers=HEADERS, timeout=20)
-        res.raise_for_status()
-        return res.text
-    except Exception as e:
-        print(f"[fetch error] {url}: {e}")
-        return None
+    for attempt in range(1, 4):
+        try:
+            res = requests.get(url, headers=HEADERS, timeout=20)
+            res.raise_for_status()
+            res.encoding = res.apparent_encoding
+            return res.text
+        except Exception as e:
+            print(f"[fetch error {attempt}/3] {url}: {e}")
+            time.sleep(1)
+
+    return None
 
 
 def save_json(path: Path, data: list[dict]) -> None:
@@ -84,10 +92,12 @@ def normalize_wiki_url(href: str) -> str | None:
 
     if parsed.netloc != "ja.wikipedia.org":
         return None
+
     if not parsed.path.startswith("/wiki/"):
         return None
 
     page_name = urllib.parse.unquote(parsed.path.split("/wiki/", 1)[1])
+
     if ":" in page_name:
         return None
 
@@ -104,45 +114,54 @@ def clean_name(value: str) -> str:
 def is_probable_person_name(name: str) -> bool:
     if not NAME_RE.match(name):
         return False
+
     if SKIP_WORDS.search(name):
         return False
+
     return True
 
 
 def collect_members_from_list_page(house: str, list_url: str) -> list[dict]:
     html = fetch(list_url)
+
     if not html:
+        print(f"{house}: HTML取得失敗")
         return []
 
-    soup = BeautifulSoup(html, "lxml")
+    soup = BeautifulSoup(html, "html.parser")
+
     members: list[dict] = []
     seen: set[tuple[str, str]] = set()
 
-content = soup.select_one("div.mw-parser-output") or soup
-for a in content.select("a[href]"):
-            wiki_url = normalize_wiki_url(a.get("href", ""))
-            if not wiki_url:
-                continue
+    content = soup.select_one("div.mw-parser-output") or soup
 
-            title = a.get("title") or a.get_text(" ", strip=True)
-            name = clean_name(title)
+    for a in content.select("a[href]"):
+        wiki_url = normalize_wiki_url(a.get("href", ""))
 
-            if not is_probable_person_name(name):
-                continue
+        if not wiki_url:
+            continue
 
-            key = (house, name)
-            if key in seen:
-                continue
+        title = a.get("title") or a.get_text(" ", strip=True)
+        name = clean_name(title)
 
-            seen.add(key)
-            members.append(
-                {
-                    "house": house,
-                    "name": name,
-                    "wiki": wiki_url,
-                    "official": None,
-                }
-            )
+        if not is_probable_person_name(name):
+            continue
+
+        key = (house, name)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        members.append(
+            {
+                "house": house,
+                "name": name,
+                "wiki": wiki_url,
+                "official": None,
+            }
+        )
 
     print(f"{house}: 議員候補 {len(members)} 件")
     return members
@@ -163,7 +182,9 @@ def normalize_external_url(href: str, base_url: str) -> str | None:
     if any(skip in host for skip in SKIP_DOMAINS):
         return None
 
-    if parsed.path.lower().endswith((".pdf", ".jpg", ".jpeg", ".png", ".gif")):
+    if parsed.path.lower().endswith(
+        (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp")
+    ):
         return None
 
     return urlunparse(
@@ -179,69 +200,88 @@ def normalize_external_url(href: str, base_url: str) -> str | None:
 
 
 def find_section_heading(soup: BeautifulSoup, keywords: list[str]):
-    """見出しテキストでセクションを検索（id属性に依存しない）"""
     for tag in soup.find_all(["h2", "h3", "h4"]):
         text = tag.get_text(strip=True)
+
         if any(kw in text for kw in keywords):
             return tag
+
     return None
 
 
 def extract_official_url(wiki_html: str, wiki_url: str) -> str | None:
-    soup = BeautifulSoup(wiki_html, "lxml")
+    soup = BeautifulSoup(wiki_html, "html.parser")
 
     def valid_links(parent) -> list[str]:
         if not parent:
             return []
-        return [
-            url
-            for a in parent.find_all("a", href=True)
-            if (url := normalize_external_url(a["href"], wiki_url))
-        ]
 
-    OFFICIAL_KEYWORDS = ["公式", "ウェブサイト", "ホームページ", "website", "web site", "hp"]
+        links: list[str] = []
 
-    # 1. infobox内の「公式サイト」行を優先
-    #    クラス名を広めに取る（infobox系はすべて対象）
+        for a in parent.find_all("a", href=True):
+            url = normalize_external_url(a["href"], wiki_url)
+
+            if url:
+                links.append(url)
+
+        return links
+
+    official_keywords = [
+        "公式",
+        "ウェブサイト",
+        "ホームページ",
+        "website",
+        "web site",
+        "hp",
+    ]
+
     for table in soup.select("table[class*='infobox']"):
         for row in table.find_all("tr"):
             label_cell = row.find(["th", "td"])
+
             if not label_cell:
                 continue
+
             label = label_cell.get_text(" ", strip=True).lower()
-            if any(k in label for k in OFFICIAL_KEYWORDS):
+
+            if any(k in label for k in official_keywords):
                 links = valid_links(row)
+
                 if links:
                     return links[0]
 
-    # 2. 外部リンクセクション（idではなく見出しテキストで探す）
     heading = find_section_heading(
-        soup, ["外部リンク", "External links", "外部リンク一覧"]
+        soup,
+        ["外部リンク", "External links", "外部リンク一覧"],
     )
+
     if heading:
-        # 「公式」と明示されたリンクを優先
         for sibling in heading.find_next_siblings():
             if sibling.name in ["h2", "h3", "h4"]:
                 break
+
             for a in sibling.find_all("a", href=True):
-                text = a.get_text(strip=True)
+                text = a.get_text(strip=True).lower()
                 href = a.get("href", "")
-                if any(k in text for k in OFFICIAL_KEYWORDS):
+
+                if any(k in text for k in official_keywords):
                     url = normalize_external_url(href, wiki_url)
+
                     if url:
                         return url
 
-        # 公式表記なければ最初の有効URL
         for sibling in heading.find_next_siblings():
             if sibling.name in ["h2", "h3", "h4"]:
                 break
+
             links = valid_links(sibling)
+
             if links:
                 return links[0]
 
-    # 3. 保険：infobox内の最初の外部URL
     for table in soup.select("table[class*='infobox']"):
         links = valid_links(table)
+
         if links:
             return links[0]
 
@@ -258,6 +298,7 @@ def add_official_urls(members: list[dict]) -> list[dict]:
         print(f"[{i}/{len(members)}] {name}")
 
         html = fetch(wiki_url)
+
         if not html:
             member["error"] = "Wikipediaページ取得失敗"
             results.append(member)
@@ -267,6 +308,7 @@ def add_official_urls(members: list[dict]) -> list[dict]:
         member["official"] = official
 
         print(f"  -> {official or '公式URLなし'}")
+
         results.append(member)
 
         if i % 20 == 0:
@@ -283,16 +325,24 @@ def main() -> None:
     seen_wiki: set[str] = set()
 
     for house, url in LIST_PAGES:
-        for member in collect_members_from_list_page(house, url):
+        collected = collect_members_from_list_page(house, url)
+
+        for member in collected:
             if member["wiki"] in seen_wiki:
                 continue
+
             seen_wiki.add(member["wiki"])
             members.append(member)
 
     print(f"合計候補: {len(members)} 件")
 
+    if not members:
+        raise SystemExit("ERROR: 議員一覧を取得できませんでした。urls.jsonは更新しません。")
+
     results = add_official_urls(members)
+
     save_json(OUT_FILE, results)
+
     print(f"完了: {OUT_FILE} に {len(results)} 件保存しました")
 
 
