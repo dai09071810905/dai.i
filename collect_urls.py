@@ -118,8 +118,8 @@ def collect_members_from_list_page(house: str, list_url: str) -> list[dict]:
     members: list[dict] = []
     seen: set[tuple[str, str]] = set()
 
-    for table in soup.select("table.wikitable"):
-        for a in table.select("a[href]"):
+content = soup.select_one("div.mw-parser-output") or soup
+for a in content.select("a[href]"):
             wiki_url = normalize_wiki_url(a.get("href", ""))
             if not wiki_url:
                 continue
