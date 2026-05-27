@@ -377,13 +377,11 @@ const updateSummary = (data) => {
   const sealCount =
     data.filter(x => x.gs_seal === true).length;
 
-  // 全議員母数
   const sslRate =
     total
       ? ((sslCount / total) * 100).toFixed(1)
       : "0.0";
 
-  // GSシェア用対象政党
   const targetParties = [
     "自民",
     "れ新",
@@ -446,8 +444,25 @@ const renderIssuerStats = (data) => {
     issuerMap[issuer]++;
   }
 
+  // 少数CAを「その他」にまとめる
+  const groupedMap = {};
+
+  for(const [issuer, count] of Object.entries(issuerMap)){
+
+    if(count <= 1){
+
+      groupedMap["その他"] ??= 0;
+
+      groupedMap["その他"] += count;
+
+    }else{
+
+      groupedMap[issuer] = count;
+    }
+  }
+
   const html =
-    Object.entries(issuerMap)
+    Object.entries(groupedMap)
       .sort((a,b)=>b[1]-a[1])
       .map(([issuer,count])=>{
 
