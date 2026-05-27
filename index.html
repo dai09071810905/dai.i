@@ -1,102 +1,109 @@
 function normalizeData(raw){
-  let rawResults = [];
 
-  // data.json が配列形式の場合
-  if (Array.isArray(raw)) {
-    rawResults = raw;
-  } else {
-    rawResults = raw.results || raw["結果"] || [];
-  }
+let rawResults = [];
 
-  const results = rawResults.map(r => {
+// data.json が配列形式の場合
+if (Array.isArray(raw)) {
+rawResults = raw;
+} else {
+rawResults = raw.results || raw["結果"] || [];
+}
 
-    const party =
-      r.party ??
-      r["党"] ??
-      "";
+const results = rawResults.map(r => {
 
-    const chamber =
-      r.chamber ??
-      r["院"] ??
-      "不明";
+```
+const party =
+  r.party ??
+  r["党"] ??
+  "";
 
-    const url =
-      r.url ??
-      r.official_url ??
-      null;
+const chamber =
+  r.chamber ??
+  r["院"] ??
+  "不明";
 
-    const https =
-      r.https ??
-      r.is_https ??
-      false;
+const url =
+  r.url ??
+  r.official_url ??
+  null;
 
-    const gs =
-      r.gs ??
-      r.globalsign_cert ??
-      r.is_gs ??
-      false;
+const https =
+  r.https ??
+  r.is_https ??
+  false;
 
-    const seal =
-      r.globalsign_site_seal ??
-      r.site_seal_found ??
-      false;
+const gs =
+  r.gs ??
+  r.globalsign_cert ??
+  r.is_gs ??
+  false;
 
-    return {
-      ...r,
+const seal =
+  r.globalsign_site_seal ??
+  r.site_seal_found ??
+  false;
 
-      // 基本
-      name: r.name ?? r["名前"] ?? "",
-      party: party,
-      chamber: chamber,
+return {
+  ...r,
 
-      // URL
-      official_url: url,
-      final_url: r.final_url ?? url,
+  // 基本
+  name: r.name ?? r["名前"] ?? "",
+  party: party,
+  chamber: chamber,
 
-      // HTTPS / GS
-      is_https: https,
-      is_gs: gs,
-      site_seal_found: seal,
+  // URL
+  official_url: url,
+  final_url: r.final_url ?? url,
 
-      // 表示用
-      party_group: partyGroup(party),
+  // HTTPS / GS
+  is_https: https,
+  is_gs: gs,
+  site_seal_found: seal,
 
-      // 証明書
-      cert_subject_o:
-        r.cert_subject_o ??
-        "",
+  // 表示用
+  party_group: partyGroup(party),
 
-      cert_issuer_o:
-        r.issuer ??
-        r.cert_issuer_o ??
-        "",
+  // 証明書
+  cert_subject_o:
+    r.cert_subject_o ??
+    "",
 
-      cert_issuer_cn:
-        r.cert_issuer_cn ??
-        "",
+  cert_issuer_o:
+    r.issuer ??
+    r.cert_issuer_o ??
+    "",
 
-      // URL取得元
-      official_url_source:
-        r.official_url_source ??
-        "",
+  cert_issuer_cn:
+    r.cert_issuer_cn ??
+    "",
 
-      // 備考
-      notes:
-        Array.isArray(r.notes)
-          ? r.notes
-          : []
-    };
-  });
+  // URL取得元
+  official_url_source:
+    r.official_url_source ??
+    "",
 
-  const summary = summaryFromResults(results);
+  // 備考
+  notes:
+    Array.isArray(r.notes)
+      ? r.notes
+      : []
+};
+```
 
-  return {
-    generated_at:
-      Array.isArray(raw)
-        ? null
-        : raw.generated_at,
+});
 
-    summary,
-    results
-  };
+const summary = summaryFromResults(results);
+
+return {
+generated_at:
+Array.isArray(raw)
+? null
+: raw.generated_at,
+
+```
+summary,
+results
+```
+
+};
 }
