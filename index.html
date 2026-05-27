@@ -248,62 +248,76 @@ GSサイトシール利用状況を自動調査したダッシュボードです
 
 let allData = [];
 
-const ldpPriorityNames = [
-  "石破茂",
-  "森山裕",
-  "小野寺五典",
-  "林芳正",
+const partyOrder = {
+  "自民": 1,
+  "国民": 2,
+  "立憲": 3,
+  "れ新": 4,
+  "民主": 5,
+  "公明": 6,
+  "維新": 7,
+  "共産": 8,
+  "参政": 9,
+  "社民": 10,
+  "保守": 11,
+  "みらい": 12,
+  "無所属": 13,
+  "不明": 99
+};
+
+const ministerPriorityNames = [
   "高市早苗",
-  "萩生田光一",
-  "小泉進次郎",
-  "加藤勝信",
-  "麻生太郎",
-  "菅義偉",
+  "石破茂",
   "岸田文雄",
-  "茂木敏充",
-  "河野太郎",
-  "西村康稔",
-  "世耕弘成",
-  "稲田朋美",
+  "菅義偉",
+  "麻生太郎",
+  "林芳正",
+  "加藤勝信",
+  "小泉進次郎",
+  "小野寺五典",
   "上川陽子",
-  "野田聖子",
+  "河野太郎",
+  "茂木敏充",
+  "西村康稔",
+  "萩生田光一",
   "鈴木俊一",
-  "武田良太",
-  "甘利明",
-  "下村博文",
-  "二階俊博"
+  "野田聖子",
+  "稲田朋美",
+  "松山政司",
+  "森山裕",
+  "世耕弘成",
+  "古屋圭司"
 ];
 
-const getLdpPriority = (row) => {
-  if(row.party !== "自民"){
-    return 9999;
+const getPartyOrder = (party) => {
+  return partyOrder[party || "不明"] || 90;
+};
+
+const getRolePriority = (row) => {
+  const idx = ministerPriorityNames.indexOf(row.name);
+
+  if(idx >= 0){
+    return idx;
   }
 
-  const index = ldpPriorityNames.indexOf(row.name);
-
-  if(index >= 0){
-    return index;
-  }
-
-  return 5000;
+  return 999;
 };
 
 const sortMembers = (data) => {
   return [...data].sort((a,b) => {
 
-    const pa = getLdpPriority(a);
-    const pb = getLdpPriority(b);
+    const partyA = getPartyOrder(a.party);
+    const partyB = getPartyOrder(b.party);
 
-    if(pa !== pb){
-      return pa - pb;
+    if(partyA !== partyB){
+      return partyA - partyB;
     }
 
-    if(a.party === "自民" && b.party !== "自民"){
-      return -1;
-    }
+    const roleA = getRolePriority(a);
+    const roleB = getRolePriority(b);
 
-    if(a.party !== "自民" && b.party === "自民"){
-      return 1;
+    if(roleA !== roleB){
+      return roleA - roleB;
     }
 
     const houseOrder = {
@@ -311,11 +325,11 @@ const sortMembers = (data) => {
       "参議院": 2
     };
 
-    const ha = houseOrder[a.house] || 9;
-    const hb = houseOrder[b.house] || 9;
+    const houseA = houseOrder[a.house] || 9;
+    const houseB = houseOrder[b.house] || 9;
 
-    if(ha !== hb){
-      return ha - hb;
+    if(houseA !== houseB){
+      return houseA - houseB;
     }
 
     return String(a.name || "").localeCompare(
@@ -418,7 +432,16 @@ const renderPartyStats = (data) => {
 
   const html =
     Object.entries(partyMap)
-      .sort((a,b)=>b[1].total-a[1].total)
+      .sort((a,b)=>{
+        const pa = getPartyOrder(a[0]);
+        const pb = getPartyOrder(b[0]);
+
+        if(pa !== pb){
+          return pa - pb;
+        }
+
+        return b[1].total - a[1].total;
+      })
       .map(([party,s])=>{
 
         const sslRate =
@@ -428,7 +451,7 @@ const renderPartyStats = (data) => {
           s.ssl ? ((s.gs / s.ssl) * 100).toFixed(1) : "0.0";
 
         const cls =
-          party === "自民" || party === "立憲" || party === "国民" || party === "れ新" || party === "民主"
+          ["自民","国民","立憲","れ新","民主"].includes(party)
             ? "highlight"
             : "";
 
