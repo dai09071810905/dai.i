@@ -1,41 +1,42 @@
-"""
-collect_urls.py  (v3)
-衆議院議員の公式URLを収集して urls.json に出力する。
+from __future__ import annotations
 
-修正点まとめ:
-  1. get_members()  : wikitable の td 内リンクだけを対象 /
-                      rel="mw:WikiLink" + title 属性で正確に名前取得
-  2. extract_official_url(): #外部リンク セレクターのDOM traversal バグを修正 /
-                              SNS・Wikipedia ドメインを除外 /
-                              infobox の「公式HP」ラベルを優先
-  3. get_wiki_page(): 曖昧さ回避判定を class + テキスト両方で確認
-  4. try_jimin()   : 複数セレクターで対応
-  5. main()        : import json をファイル先頭に移動 / 10件ごと中間保存
-  6. 全般          : SKIP_DOMAINS 定数追加 / タイムアウト・エラー処理強化
-"""
-
-import re
 import json
+import re
 import time
 import urllib.parse
+from pathlib import Path
+from urllib.parse import urljoin, urlparse, urlunparse
+
 import requests
 from bs4 import BeautifulSoup
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; research bot)"}
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; diet-member-ssl-checker/1.0)"
+}
 
-# SNS・Wikipedia など「公式HPではないドメイン」を除外
+LIST_PAGES = [
+    ("衆議院", "https://ja.wikipedia.org/wiki/衆議院議員一覧"),
+    ("参議院", "https://ja.wikipedia.org/wiki/参議院議員一覧"),
+]
+
+OUT_FILE = Path("urls.json")
+
 SKIP_DOMAINS = (
-    "wikipedia.org", "wikimedia.org",
-    "twitter.com", "x.com",
-    "facebook.com", "instagram.com",
-    "youtube.com", "youtu.be",
-    "linkedin.com", "ameblo.jp",
-    "note.com",
+    "wikipedia.org",
+    "wikimedia.org",
+    "twitter.com",
+    "x.com",
+    "facebook.com",
+    "instagram.com",
+    "youtube.com",
+    "youtu.be",
+    "linkedin.com",
+    "line.me",
+    "tiktok.com",
 )
 
-# 人名に含まれるはずのない語（部分一致で除外）
 SKIP_WORDS = re.compile(
-    r"委員|議会|政党|選挙|制度|内閣|大臣|政府|国会|衆議院|参議院"
+    r"委員|議会|政党|選挙|制度|内閣|大臣|政府|国会|衆議院|参議院|議長|副議長"
     r"|裁判|司法|立法|行政|都道府県|市町村|自治|条例|憲法|法律|法案"
     r"|予算|税|補助|公共|政策|改革|連合|同盟|協会|連盟|組合|財団"
     r"|大学|学校|研究|機関|センター|庁|省|局|部|課"
@@ -43,328 +44,278 @@ SKIP_WORDS = re.compile(
     r"|東京|神奈川|新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知|三重"
     r"|滋賀|京都|大阪|兵庫|奈良|和歌山|鳥取|島根|岡山|広島|山口"
     r"|徳島|香川|愛媛|高知|福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄"
-    r"|ブロック|比例|小選挙区|名簿|選挙区|ファイル"
+    r"|比例|小選挙区|名簿|選挙区|ブロック|ファイル|カテゴリ"
+    r"|自由民主党|立憲民主党|日本維新の会|公明党|国民民主党|日本共産党"
+    r"|れいわ新選組|参政党|社会民主党|無所属|会派"
 )
 
-# 人名パターン: 漢字2〜4字 + 漢字1〜4字（姓名）、または漢字3〜6字
-NAME_PATTERN = re.compile(
-    r'^[一-龥々]{2,4}[\u3000\s]?[一-龥々]{1,4}$'
-    r'|^[一-龥々]{3,6}$'
-)
+NAME_RE = re.compile(r"^[一-龥々ぁ-んァ-ヶーA-Za-z・]{2,14}$")
 
 
-# ──────────────────────────────────────────
-# Wikipedia 検索 API
-# ──────────────────────────────────────────
-def search_wikipedia(name: str) -> str | None:
-    """名前でWikipediaを検索し、最初にヒットした記事URLを返す。"""
-    api_url = "https://ja.wikipedia.org/w/api.php"
-    params = {
-        "action": "query",
-        "list": "search",
-        "srsearch": name,
-        "format": "json",
-        "srlimit": 1,
-    }
+def fetch(url: str) -> str | None:
     try:
-        res = requests.get(api_url, params=params, headers=HEADERS, timeout=10)
-        data = res.json()
-        hits = data.get("query", {}).get("search", [])
-        if hits:
-            title = hits[0]["title"]
-            return f"https://ja.wikipedia.org/wiki/{urllib.parse.quote(title)}"
+        res = requests.get(url, headers=HEADERS, timeout=20)
+        res.raise_for_status()
+        return res.text
     except Exception as e:
-        print(f"  [search_wikipedia] error: {e}")
-    return None
+        print(f"[fetch error] {url}: {e}")
+        return None
 
 
-# ──────────────────────────────────────────
-# Wikipediaページ取得
-# ──────────────────────────────────────────
-def get_wiki_page(name: str) -> tuple[str | None, str | None]:
-    """
-    (wiki_url, html) を返す。
-    直接URLが曖昧さ回避ページなら検索にフォールバック。
-    取得できない場合は (None, None)。
-    """
-    direct_url = f"https://ja.wikipedia.org/wiki/{urllib.parse.quote(name)}"
-    try:
-        res = requests.get(direct_url, headers=HEADERS, timeout=10)
-        if res.status_code == 200:
-            # 曖昧さ回避ページの判定（class とテキスト両方で確認）
-            soup_check = BeautifulSoup(res.text[:8000], "lxml")
-            is_disambig = bool(
-                soup_check.find(class_="disambiguation")
-                or soup_check.find(class_="dmbox-disambig")
-                or "曖昧さ回避" in res.text[:4000]
-            )
-            if not is_disambig:
-                return direct_url, res.text
-    except Exception as e:
-        print(f"  [get_wiki_page] direct fetch error ({name}): {e}")
-
-    # フォールバック: 検索API
-    fallback_url = search_wikipedia(name)
-    if fallback_url and fallback_url != direct_url:
-        try:
-            res2 = requests.get(fallback_url, headers=HEADERS, timeout=10)
-            if res2.status_code == 200:
-                return fallback_url, res2.text
-        except Exception as e:
-            print(f"  [get_wiki_page] fallback fetch error ({name}): {e}")
-
-    return None, None
+def save_json(path: Path, data: list[dict]) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
 
 
-# ──────────────────────────────────────────
-# 公式URL抽出
-# ──────────────────────────────────────────
-def extract_official_url(html: str) -> str | None:
-    """
-    WikipediaページのHTMLから公式URLを抽出する。
-    優先順位:
-      ① infobox 内の「公式/ホームページ/website」ラベル付きリンク
-      ② infobox 内の最初の http リンク（SNS・Wikipedia除外）
-      ③ 外部リンクセクションの最初の http リンク（SNS・Wikipedia除外）
+def normalize_wiki_url(href: str) -> str | None:
+    if not href:
+        return None
 
-    【バグ修正】旧コードの `soup.select("#外部リンク a[href]")` は
-    <span id="外部リンク"> の「内側」を探すため一件もヒットしなかった。
-    正しくは親 <h2>/<h3> の次の兄弟 <ul> を辿る必要がある。
-    """
+    if href.startswith("//"):
+        href = "https:" + href
+    elif href.startswith("/wiki/"):
+        href = "https://ja.wikipedia.org" + href
+    elif href.startswith("./"):
+        href = urljoin("https://ja.wikipedia.org/wiki/", href)
+
+    parsed = urlparse(href)
+
+    if parsed.netloc != "ja.wikipedia.org":
+        return None
+    if not parsed.path.startswith("/wiki/"):
+        return None
+
+    page_name = urllib.parse.unquote(parsed.path.split("/wiki/", 1)[1])
+    if ":" in page_name:
+        return None
+
+    return href.split("#", 1)[0]
+
+
+def clean_name(value: str) -> str:
+    value = value.strip()
+    value = re.sub(r"\s*[（(].*$", "", value)
+    value = value.replace(" ", "").replace("　", "")
+    return value
+
+
+def is_probable_person_name(name: str) -> bool:
+    if not NAME_RE.match(name):
+        return False
+    if SKIP_WORDS.search(name):
+        return False
+    return True
+
+
+def collect_members_from_list_page(house: str, list_url: str) -> list[dict]:
+    html = fetch(list_url)
+    if not html:
+        return []
+
     soup = BeautifulSoup(html, "lxml")
+    members: list[dict] = []
+    seen: set[tuple[str, str]] = set()
 
-    def is_valid(href: str) -> bool:
-        return (
-            href.startswith("http")
-            and not any(d in href for d in SKIP_DOMAINS)
+    for table in soup.select("table.wikitable"):
+        for a in table.select("a[href]"):
+            wiki_url = normalize_wiki_url(a.get("href", ""))
+            if not wiki_url:
+                continue
+
+            title = a.get("title") or a.get_text(" ", strip=True)
+            name = clean_name(title)
+
+            if not is_probable_person_name(name):
+                continue
+
+            key = (house, name)
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            members.append(
+                {
+                    "house": house,
+                    "name": name,
+                    "wiki": wiki_url,
+                    "official": None,
+                }
+            )
+
+    print(f"{house}: 議員候補 {len(members)} 件")
+    return members
+
+
+def normalize_external_url(href: str, base_url: str) -> str | None:
+    if not href:
+        return None
+
+    href = urljoin(base_url, href)
+
+    parsed = urlparse(href)
+
+    if parsed.scheme not in ("http", "https"):
+        return None
+
+    host = (parsed.netloc or "").lower()
+
+    if any(skip in host for skip in SKIP_DOMAINS):
+        return None
+
+    if parsed.path.lower().endswith((".pdf", ".jpg", ".jpeg", ".png", ".gif")):
+        return None
+
+    return urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path or "/",
+            "",
+            parsed.query,
+            "",
         )
+    )
 
-    # ① infobox: 「公式」「ホームページ」「website」ラベルを優先
-    for row in soup.select("table.infobox tr"):
-        th = row.find("th")
-        td = row.find("td")
-        if not th or not td:
+
+def extract_official_url(wiki_html: str, wiki_url: str) -> str | None:
+    soup = BeautifulSoup(wiki_html, "lxml")
+
+    def valid_links(parent) -> list[str]:
+        urls: list[str] = []
+
+        if not parent:
+            return urls
+
+        for a in parent.find_all("a", href=True):
+            url = normalize_external_url(a["href"], wiki_url)
+            if url:
+                urls.append(url)
+
+        return urls
+
+    # 1. infobox内の「公式」「ウェブサイト」「ホームページ」行を優先
+    for row in soup.select("table.infobox tr, table.infobox_v2 tr"):
+        label_cell = row.find(["th", "td"])
+        if not label_cell:
             continue
-        label = th.get_text().lower()
-        if any(k in label for k in ["公式", "ホームページ", "website", "hp", "ウェブ"]):
-            for a in td.find_all("a", href=True):
-                href = a["href"]
-                if is_valid(href):
-                    return href
 
-    # ② infobox: ラベル問わず最初の有効リンク
-    for a in soup.select("table.infobox a[href]"):
-        href = a.get("href", "")
-        if is_valid(href):
-            return href
+        label = label_cell.get_text(" ", strip=True).lower()
 
-    # ③ 外部リンクセクション（正しい DOM traversal）
-    #
-    #  Wikipediaの実際のHTML構造:
-    #    <h2 id="外部リンク">…</h2>
-    #    <ul>
-    #      <li><a href="https://...">公式HP</a></li>
-    #    </ul>
-    #
-    #  旧コードの `#外部リンク a[href]` は <span id="外部リンク"> の子を探すため
-    #  常に0件だった。h2/h3 の find_next_siblings で <ul> を辿るのが正解。
-    for section_id in ["外部リンク", "外部リンク_1", "External_links"]:
+        if any(
+            k in label
+            for k in ["公式", "ウェブサイト", "ホームページ", "website", "web site", "hp"]
+        ):
+            links = valid_links(row)
+            if links:
+                return links[0]
+
+    # 2. 外部リンクセクションを見る
+    for section_id in ["外部リンク", "External_links", "外部リンク_1"]:
         target = soup.find(id=section_id)
         if not target:
             continue
-        # id が span に付いているケース: 親 heading に上がる
+
         heading = (
             target
             if target.name in ["h2", "h3", "h4"]
             else target.find_parent(["h2", "h3", "h4"])
         )
+
         if not heading:
             continue
+
+        # 「公式」と書かれたリンクを優先
         for sibling in heading.find_next_siblings():
             if sibling.name in ["h2", "h3"]:
-                break  # 次のセクションに到達したら終了
-            if sibling.name in ["ul", "div"]:
-                for a in sibling.find_all("a", href=True):
-                    href = a["href"]
-                    if is_valid(href):
-                        return href
+                break
+
+            if sibling.name not in ["ul", "ol", "div", "p"]:
+                continue
+
+            for a in sibling.find_all("a", href=True):
+                text = a.get_text(" ", strip=True)
+                href = a.get("href", "")
+
+                if any(
+                    k in text.lower()
+                    for k in ["公式", "ホームページ", "ウェブサイト", "website", "hp"]
+                ):
+                    url = normalize_external_url(href, wiki_url)
+                    if url:
+                        return url
+
+        # 公式表記がない場合、外部リンクセクションの最初の有効URL
+        for sibling in heading.find_next_siblings():
+            if sibling.name in ["h2", "h3"]:
+                break
+
+            links = valid_links(sibling)
+            if links:
+                return links[0]
+
+    # 3. 最後の保険：infobox内の最初の外部URL
+    for table in soup.select("table.infobox, table.infobox_v2"):
+        links = valid_links(table)
+        if links:
+            return links[0]
 
     return None
 
 
-# ──────────────────────────────────────────
-# 自民党サイト フォールバック
-# ──────────────────────────────────────────
-def try_jimin(name: str) -> str | None:
-    search_url = f"https://www.jimin.jp/member/?q={urllib.parse.quote(name)}"
-    try:
-        res = requests.get(search_url, headers=HEADERS, timeout=10)
-        if res.status_code != 200:
-            return None
-        soup = BeautifulSoup(res.text, "lxml")
-
-        for selector in [
-            "a.member-link",
-            "a.c-member__link",
-            ".memberList a[href]",
-            ".member-list a[href]",
-            # ❌ "article a[href]"  ← 削除: 広すぎてナビリンクを返す
-        ]:
-            a_tag = soup.select_one(selector)
-            if a_tag and a_tag.get("href"):
-                href = a_tag["href"]
-                if href.startswith("/"):
-                    href = "https://www.jimin.jp" + href
-                # ✅ URLに /member/ が含まれるか確認してから返す
-                if "/member/" in href:
-                    return href
-    except Exception as e:
-        print(f"  [try_jimin] error ({name}): {e}")
-    return None
-
-
-# ──────────────────────────────────────────
-# 議員一覧取得
-# ──────────────────────────────────────────
-def get_members() -> list[dict]:
-    """
-    Wikipediaの衆議院議員一覧から議員名とWikipedia URLを収集する。
-
-    【修正ポイント】
-    旧コード: ページ全体の <a> を走査 → 非議員リンクが大量混入
-    新コード: table.wikitable の td 内にある a[rel="mw:WikiLink"] を使う
-              title 属性に議員名が直接入っており正確
-
-    実際のHTML構造:
-      <table class="wikitable">
-        <td>
-          <a rel="mw:WikiLink" href="//ja.wikipedia.org/wiki/加藤貴弘"
-             title="加藤貴弘">加藤貴弘</a>
-        </td>
-      </table>
-    """
-    list_url = "https://ja.wikipedia.org/wiki/衆議院議員一覧"
-    try:
-        html = requests.get(list_url, headers=HEADERS, timeout=15).text
-    except Exception as e:
-        print(f"[get_members] fetch error: {e}")
-        return []
-
-    soup = BeautifulSoup(html, "lxml")
-    members: list[dict] = []
-    seen: set[str] = set()
-
-    # wikitable の td 内にある WikiLink だけを対象にする
-    # ページ全体リンクを走査する旧方式より精度が大幅に向上
-    for a in soup.select('table.wikitable td a[href]'):
-        title_attr = a.get("title", "").strip()
-        href = a.get("href", "")
-
-        if not title_attr or not href:
-             if not title_attr or not href:
-        continue
-    if not href.startswith("//ja.wikipedia.org/wiki/"):  # ← 追加
-        continue
-            continue
-
-        # 名前空間リンク除外（ファイル・カテゴリ・選挙区等）
-        if any(ns in title_attr for ns in [
-            "ファイル:", "File:", "Template:", "Wikipedia:",
-            "Category:", "第", "区",
-        ]):
-            continue
-
-        # title から曖昧さ回避suffix除去
-        # 例: 「鈴木貴子 (政治家)」→「鈴木貴子」
-        name = re.split(r'[\s　（(]', title_attr)[0].strip()
-
-        # 人名パターンチェック
-        if not NAME_PATTERN.match(name):
-            continue
-
-        # 除外ワードチェック
-        if SKIP_WORDS.search(name):
-            continue
-
-        # 重複除外
-        if name in seen:
-            continue
-        seen.add(name)
-
-        # URL正規化
-        if href.startswith("//"):
-            wiki_url = "https:" + href
-        elif href.startswith("/wiki/"):
-            wiki_url = "https://ja.wikipedia.org" + href
-        else:
-            continue
-
-        members.append({"name": name, "wiki": wiki_url})
-
-    print(f"議員候補数: {len(members)}")
-    return members
-
-
-# ──────────────────────────────────────────
-# メイン
-# ──────────────────────────────────────────
-def main():
-    import sys
-
-    members = get_members()
-    if not members:
-        print("ERROR: 議員リストの取得に失敗しました。", file=sys.stderr)
-        sys.exit(1)
-
+def add_official_urls(members: list[dict]) -> list[dict]:
     results: list[dict] = []
-    total = len(members)
 
     for i, member in enumerate(members, 1):
         name = member["name"]
         wiki_url = member["wiki"]
-        print(f"[{i}/{total}] {name} ...")
 
-        wiki_url_actual, html = get_wiki_page(name)
+        print(f"[{i}/{len(members)}] {name}")
+
+        html = fetch(wiki_url)
         if not html:
-            print(f"  → Wikipediaページ取得失敗, スキップ")
-            time.sleep(0.5)
+            member["error"] = "Wikipediaページ取得失敗"
+            results.append(member)
             continue
 
-        official_url = extract_official_url(html)
+        official = extract_official_url(html, wiki_url)
+        member["official"] = official
 
-        # フォールバック: 自民党サイト
-        if not official_url:
-            official_url = try_jimin(name)
-
-        if official_url:
-            print(f"  → {official_url}")
-            results.append({
-                "name": name,
-                "wiki": wiki_url_actual or wiki_url,
-                "official": official_url,
-            })
+        if official:
+            print(f"  -> {official}")
         else:
-            print(f"  → 公式URL見つからず")
+            print("  -> 公式URLなし")
 
-        # 10件ごとに中間保存（途中クラッシュ対策）
-        if i % 10 == 0:
-            with open("urls.json", "w", encoding="utf-8") as f:
-                json.dump(results, f, ensure_ascii=False, indent=2)
-            print(f"  ── チェックポイント保存: {len(results)} 件 ──")
+        results.append(member)
 
-        time.sleep(0.8)  # Wikipedia へのレートリミット
+        if i % 20 == 0:
+            save_json(OUT_FILE, results)
+            print(f"  checkpoint: {len(results)} 件保存")
 
-    # 最終保存
-    with open("urls.json", "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
+        time.sleep(0.25)
 
-    print(f"\n完了: {len(results)} / {total} 件の公式URLを収集しました。")
-    print("出力: urls.json")
+    return results
 
-    # 0件なら CI にエラーを通知
-    if not results:
-        print("ERROR: 公式URLが1件も収集できませんでした。", file=sys.stderr)
-        sys.exit(1)
+
+def main() -> None:
+    members: list[dict] = []
+    seen_wiki: set[str] = set()
+
+    for house, url in LIST_PAGES:
+        for member in collect_members_from_list_page(house, url):
+            if member["wiki"] in seen_wiki:
+                continue
+
+            seen_wiki.add(member["wiki"])
+            members.append(member)
+
+    print(f"合計候補: {len(members)} 件")
+
+    results = add_official_urls(members)
+    save_json(OUT_FILE, results)
+
+    print(f"完了: {OUT_FILE} に {len(results)} 件保存しました")
 
 
 if __name__ == "__main__":
