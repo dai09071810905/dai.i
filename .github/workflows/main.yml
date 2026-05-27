@@ -2,8 +2,6 @@ name: Update and Deploy Pages
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 22 * * 0"
 
 permissions:
   contents: read
@@ -32,6 +30,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Test Wikipedia access
+        run: |
+          python - <<'PY'
+          import requests
+          url = "https://ja.wikipedia.org/wiki/衆議院議員一覧"
+          r = requests.get(url, timeout=20)
+          print(r.status_code)
+          print(r.text[:200])
+          PY
+
       - name: Collect official URLs
         run: |
           python collect_urls.py
@@ -57,8 +65,7 @@ jobs:
           print("data.json count:", len(data))
           print(data[:3])
           if len(data) == 0:
-              print("ERROR: data.json is empty")
-              sys.exit(1)
+              sys.exit("ERROR: data.json is empty")
           PY
 
       - name: Setup Pages
