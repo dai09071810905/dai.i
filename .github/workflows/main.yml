@@ -1,68 +1,49 @@
-name: update.yml
+name: Update Diet Member SSL Data
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 0 * * *"
-
-# 同時実行防止
-concurrency:
-  group: update-dashboard
-  cancel-in-progress: false
+    - cron: "0 22 * * 0"
 
 permissions:
   contents: write
 
 jobs:
-  run:
+  update:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5          # v4 → v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"                         # pip キャッシュ追加
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt      # requirements.txt で管理
+          pip install -r requirements.txt
 
-      - name: Collect URLs
-        timeout-minutes: 30                    # ステップ単位タイムアウト
-        run: python collect_urls.py
-
-      - name: Scan SSL
-        timeout-minutes: 60
-        run: python scan_ssl.py
-
-      - name: Commit & Push
+      - name: Collect official URLs from Wikipedia
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python collect_urls.py
 
-          # ファイルが存在するものだけ追加（初回実行でも失敗しない）
-          git add --ignore-errors urls.json data.json
+      - name: Scan SSL certificates and GlobalSign seal
+        run: |
+          python scan_ssl.py
+
+      - name: Commit updated JSON files
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add urls.json data.json
 
           if git diff --cached --quiet; then
-            echo "No changes – skipping commit"
+            echo "No changes to commit"
           else
-            git commit -m "update dashboard data [skip ci]"
+            git commit -m "Update Diet member SSL data"
             git push
           fi
-
-      # 失敗時のみデバッグ用ファイルを保存
-      - name: Upload debug artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-outputs-${{ github.run_id }}
-          path: |
-            urls.json
-            data.json
-          retention-days: 3
