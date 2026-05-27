@@ -1,4 +1,4 @@
-name: Update Diet Member SSL Data
+name: Update and Deploy Pages
 
 on:
   workflow_dispatch:
@@ -6,10 +6,16 @@ on:
     - cron: "0 22 * * 0"
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  update:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,24 +32,52 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Collect official URLs from Wikipedia
+      - name: Collect official URLs
         run: |
           python collect_urls.py
 
-      - name: Scan SSL certificates and GlobalSign seal
+      - name: Show urls.json count
+        run: |
+          python - <<'PY'
+          import json
+          data = json.load(open("urls.json", encoding="utf-8"))
+          print("urls.json count:", len(data))
+          print(data[:3])
+          PY
+
+      - name: Scan SSL certificates
         run: |
           python scan_ssl.py
 
-      - name: Commit updated JSON files
+      - name: Show data.json count
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          python - <<'PY'
+          import json, sys
+          data = json.load(open("data.json", encoding="utf-8"))
+          print("data.json count:", len(data))
+          print(data[:3])
+          if len(data) == 0:
+              print("ERROR: data.json is empty")
+              sys.exit(1)
+          PY
 
-          git add urls.json data.json
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update Diet member SSL data"
-            git push
-          fi
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: "."
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
