@@ -5,7 +5,15 @@ import re
 import time
 import urllib.parse
 from pathlib import Path
-from urllib.parse import urljoin, urlparse, urlunparse, quote_plus, parse_qs, urlsplit, unquote
+from urllib.parse import (
+    urljoin,
+    urlparse,
+    urlunparse,
+    quote_plus,
+    parse_qs,
+    urlsplit,
+    unquote,
+)
 
 import pandas as pd
 import requests
@@ -24,14 +32,6 @@ MEMBER_FILE = Path("members.xlsx")
 OUT_FILE = Path("urls.json")
 
 USE_SEARCH_FALLBACK = False
-
-SKIP_PARTIES = {
-    "無",
-    "無所属",
-    "無所属の会",
-    "無所属クラブ",
-    "沖縄",
-}
 
 PARTY_MAP = {
     "みら": "みらい",
@@ -61,72 +61,152 @@ MANUAL_OFFICIAL_URLS = {
 
 
 def fetch(url: str, timeout: int = 15) -> str | None:
+
     for attempt in range(1, 4):
+
         try:
-            res = requests.get(url, headers=HEADERS, timeout=timeout)
+
+            res = requests.get(
+                url,
+                headers=HEADERS,
+                timeout=timeout,
+            )
+
             res.raise_for_status()
+
             res.encoding = res.apparent_encoding
+
             return res.text
+
         except Exception as e:
-            print(f"[fetch error {attempt}/3] {url}: {e}")
+
+            print(
+                f"[fetch error {attempt}/3] {url}: {e}"
+            )
+
             time.sleep(1)
 
     return None
 
 
 def save_json(path: Path, data: list[dict]) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
+
+    tmp = path.with_suffix(
+        path.suffix + ".tmp"
+    )
+
     tmp.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2),
+        json.dumps(
+            data,
+            ensure_ascii=False,
+            indent=2,
+        ),
         encoding="utf-8",
     )
+
     tmp.replace(path)
 
 
 def clean_text(value) -> str:
+
     if value is None:
         return ""
 
     if pd.isna(value):
         return ""
 
-    return str(value).strip().replace("\n", "").replace("\r", "")
+    return (
+        str(value)
+        .strip()
+        .replace("\n", "")
+        .replace("\r", "")
+    )
 
 
 def clean_name(value) -> str:
+
     value = clean_text(value)
-    value = re.sub(r"\s*[（(].*$", "", value)
-    value = re.sub(r"\s*\[.*?\]\s*", "", value)
-    value = value.replace(" ", "").replace("　", "")
+
+    value = re.sub(
+        r"\s*[（(].*$",
+        "",
+        value
+    )
+
+    value = re.sub(
+        r"\s*\[.*?\]\s*",
+        "",
+        value
+    )
+
+    value = (
+        value
+        .replace(" ", "")
+        .replace("　", "")
+    )
+
     return value
 
 
 def normalize_party(value) -> str:
-    party = clean_text(value)
-    party = party.replace(" ", "").replace("　", "")
 
-    return PARTY_MAP.get(party, party)
+    party = clean_text(value)
+
+    party = (
+        party
+        .replace(" ", "")
+        .replace("　", "")
+    )
+
+    return PARTY_MAP.get(
+        party,
+        party
+    )
 
 
 def load_members() -> list[dict]:
-    if not MEMBER_FILE.exists():
-        raise SystemExit(f"ERROR: {MEMBER_FILE} が見つかりません。")
 
-    df = pd.read_excel(MEMBER_FILE, header=None)
+    if not MEMBER_FILE.exists():
+
+        raise SystemExit(
+            f"ERROR: {MEMBER_FILE} が見つかりません。"
+        )
+
+    df = pd.read_excel(
+        MEMBER_FILE,
+        header=None
+    )
+
+    print(
+        f"Excel raw rows: {len(df)}"
+    )
 
     members: list[dict] = []
+
     seen: set[tuple[str, str]] = set()
 
     for _, row in df.iterrows():
-        house = clean_text(row.iloc[0] if len(row) > 0 else "")
-        name = clean_name(row.iloc[1] if len(row) > 1 else "")
-        party = normalize_party(row.iloc[2] if len(row) > 2 else "")
 
-        if not house or not name or not party:
+        house = clean_text(
+            row.iloc[0]
+            if len(row) > 0 else ""
+        )
+
+        name = clean_name(
+            row.iloc[1]
+            if len(row) > 1 else ""
+        )
+
+        party = normalize_party(
+            row.iloc[2]
+            if len(row) > 2 else ""
+        )
+
+        if not house or not name:
             continue
 
-        if party in SKIP_PARTIES:
-            continue
+        if not party:
+            party = "不明"
 
         key = (house, name)
 
@@ -145,27 +225,54 @@ def load_members() -> list[dict]:
             }
         )
 
-    print(f"Excel議員数: {len(members)} 件")
+    print(
+        f"Excel議員数: {len(members)} 件"
+    )
+
     return members
 
 
-def normalize_external_url(href: str, base_url: str) -> str | None:
+def normalize_external_url(
+    href: str,
+    base_url: str
+) -> str | None:
+
     if not href:
         return None
 
-    href = urljoin(base_url, href)
+    href = urljoin(
+        base_url,
+        href
+    )
+
     parsed = urlparse(href)
 
-    if parsed.scheme not in ("http", "https"):
+    if parsed.scheme not in (
+        "http",
+        "https",
+    ):
         return None
 
-    host = (parsed.netloc or "").lower()
+    host = (
+        parsed.netloc or ""
+    ).lower()
 
-    if any(skip in host for skip in SKIP_DOMAINS):
+    if any(
+        skip in host
+        for skip in SKIP_DOMAINS
+    ):
         return None
 
     if parsed.path.lower().endswith(
-        (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp")
+        (
+            ".pdf",
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".svg",
+            ".webp",
+        )
     ):
         return None
 
@@ -181,7 +288,10 @@ def normalize_external_url(href: str, base_url: str) -> str | None:
     )
 
 
-def normalize_wiki_url(href: str) -> str | None:
+def normalize_wiki_url(
+    href: str
+) -> str | None:
+
     if not href:
         return None
 
@@ -192,7 +302,10 @@ def normalize_wiki_url(href: str) -> str | None:
         href = "https://ja.wikipedia.org" + href
 
     elif href.startswith("./"):
-        href = urljoin("https://ja.wikipedia.org/wiki/", href)
+        href = urljoin(
+            "https://ja.wikipedia.org/wiki/",
+            href
+        )
 
     parsed = urlparse(href)
 
@@ -202,7 +315,9 @@ def normalize_wiki_url(href: str) -> str | None:
     if not parsed.path.startswith("/wiki/"):
         return None
 
-    page_name = urllib.parse.unquote(parsed.path.split("/wiki/", 1)[1])
+    page_name = urllib.parse.unquote(
+        parsed.path.split("/wiki/", 1)[1]
+    )
 
     if ":" in page_name:
         return None
@@ -210,52 +325,109 @@ def normalize_wiki_url(href: str) -> str | None:
     return href.split("#", 1)[0]
 
 
-def find_wikipedia_page(name: str) -> str | None:
-    search_url = "https://ja.wikipedia.org/w/index.php?search=" + quote_plus(name)
-    html = fetch(search_url, timeout=12)
+def find_wikipedia_page(
+    name: str
+) -> str | None:
+
+    search_url = (
+        "https://ja.wikipedia.org/w/index.php?search="
+        + quote_plus(name)
+    )
+
+    html = fetch(
+        search_url,
+        timeout=12
+    )
 
     if not html:
         return None
 
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
+    )
 
-    first = soup.select_one(".mw-search-result-heading a[href]")
+    first = soup.select_one(
+        ".mw-search-result-heading a[href]"
+    )
 
     if first:
-        return normalize_wiki_url(first.get("href", ""))
 
-    heading = soup.select_one("#firstHeading")
+        return normalize_wiki_url(
+            first.get("href", "")
+        )
+
+    heading = soup.select_one(
+        "#firstHeading"
+    )
 
     if heading:
-        title = clean_name(heading.get_text(" ", strip=True))
+
+        title = clean_name(
+            heading.get_text(
+                " ",
+                strip=True
+            )
+        )
 
         if name in title or title in name:
-            return "https://ja.wikipedia.org/wiki/" + urllib.parse.quote(name)
+
+            return (
+                "https://ja.wikipedia.org/wiki/"
+                + urllib.parse.quote(name)
+            )
 
     return None
 
 
-def find_section_heading(soup: BeautifulSoup, keywords: list[str]):
-    for tag in soup.find_all(["h2", "h3", "h4"]):
-        text = tag.get_text(strip=True)
+def find_section_heading(
+    soup: BeautifulSoup,
+    keywords: list[str]
+):
 
-        if any(kw in text for kw in keywords):
+    for tag in soup.find_all(
+        ["h2", "h3", "h4"]
+    ):
+
+        text = tag.get_text(
+            strip=True
+        )
+
+        if any(
+            kw in text
+            for kw in keywords
+        ):
             return tag
 
     return None
 
 
-def extract_official_url(wiki_html: str, wiki_url: str) -> str | None:
-    soup = BeautifulSoup(wiki_html, "html.parser")
+def extract_official_url(
+    wiki_html: str,
+    wiki_url: str
+) -> str | None:
+
+    soup = BeautifulSoup(
+        wiki_html,
+        "html.parser"
+    )
 
     def valid_links(parent):
+
         if not parent:
             return []
 
         links = []
 
-        for a in parent.find_all("a", href=True):
-            url = normalize_external_url(a["href"], wiki_url)
+        for a in parent.find_all(
+            "a",
+            href=True
+        ):
+
+            url = normalize_external_url(
+                a["href"],
+                wiki_url
+            )
 
             if url:
                 links.append(url)
@@ -271,16 +443,29 @@ def extract_official_url(wiki_html: str, wiki_url: str) -> str | None:
         "hp",
     ]
 
-    for table in soup.select("table[class*='infobox']"):
+    for table in soup.select(
+        "table[class*='infobox']"
+    ):
+
         for row in table.find_all("tr"):
-            label_cell = row.find(["th", "td"])
+
+            label_cell = row.find(
+                ["th", "td"]
+            )
 
             if not label_cell:
                 continue
 
-            label = label_cell.get_text(" ", strip=True).lower()
+            label = label_cell.get_text(
+                " ",
+                strip=True
+            ).lower()
 
-            if any(k in label for k in official_keywords):
+            if any(
+                k in label
+                for k in official_keywords
+            ):
+
                 links = valid_links(row)
 
                 if links:
@@ -288,26 +473,22 @@ def extract_official_url(wiki_html: str, wiki_url: str) -> str | None:
 
     heading = find_section_heading(
         soup,
-        ["外部リンク", "External links", "外部リンク一覧"],
+        [
+            "外部リンク",
+            "External links",
+            "外部リンク一覧",
+        ],
     )
 
     if heading:
-        for sibling in heading.find_next_siblings():
-            if sibling.name in ["h2", "h3", "h4"]:
-                break
-
-            for a in sibling.find_all("a", href=True):
-                text = a.get_text(strip=True).lower()
-                href = a.get("href", "")
-
-                if any(k in text for k in official_keywords):
-                    url = normalize_external_url(href, wiki_url)
-
-                    if url:
-                        return url
 
         for sibling in heading.find_next_siblings():
-            if sibling.name in ["h2", "h3", "h4"]:
+
+            if sibling.name in [
+                "h2",
+                "h3",
+                "h4",
+            ]:
                 break
 
             links = valid_links(sibling)
@@ -315,7 +496,10 @@ def extract_official_url(wiki_html: str, wiki_url: str) -> str | None:
             if links:
                 return links[0]
 
-    for table in soup.select("table[class*='infobox']"):
+    for table in soup.select(
+        "table[class*='infobox']"
+    ):
+
         links = valid_links(table)
 
         if links:
@@ -324,21 +508,38 @@ def extract_official_url(wiki_html: str, wiki_url: str) -> str | None:
     return None
 
 
-def normalize_search_url(href: str) -> str | None:
+def normalize_search_url(
+    href: str
+) -> str | None:
+
     if not href:
         return None
 
     if href.startswith("//duckduckgo.com/l/?uddg="):
-        qs = parse_qs(urlsplit("https:" + href).query)
+
+        qs = parse_qs(
+            urlsplit(
+                "https:" + href
+            ).query
+        )
 
         if "uddg" in qs:
-            return unquote(qs["uddg"][0])
+            return unquote(
+                qs["uddg"][0]
+            )
 
     if href.startswith("/l/?uddg="):
-        qs = parse_qs(urlsplit("https://duckduckgo.com" + href).query)
+
+        qs = parse_qs(
+            urlsplit(
+                "https://duckduckgo.com" + href
+            ).query
+        )
 
         if "uddg" in qs:
-            return unquote(qs["uddg"][0])
+            return unquote(
+                qs["uddg"][0]
+            )
 
     if href.startswith("http"):
         return href
@@ -346,33 +547,67 @@ def normalize_search_url(href: str) -> str | None:
     return None
 
 
-def find_from_search(name: str) -> str | None:
+def find_from_search(
+    name: str
+) -> str | None:
+
     if not USE_SEARCH_FALLBACK:
         return None
 
-    print(f"  -> 検索 fallback: {name}")
+    print(
+        f"  -> 検索 fallback: {name}"
+    )
 
-    url = "https://html.duckduckgo.com/html/?q=" + quote_plus(f"{name} 公式サイト")
-    html = fetch(url, timeout=8)
+    url = (
+        "https://html.duckduckgo.com/html/?q="
+        + quote_plus(f"{name} 公式サイト")
+    )
+
+    html = fetch(
+        url,
+        timeout=8
+    )
 
     if not html:
         return None
 
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
+    )
 
-    for a in soup.select("a.result__a[href]"):
-        candidate = normalize_search_url(a.get("href", ""))
+    for a in soup.select(
+        "a.result__a[href]"
+    ):
+
+        candidate = normalize_search_url(
+            a.get("href", "")
+        )
 
         if not candidate:
             continue
 
         parsed = urlparse(candidate)
-        host = (parsed.netloc or "").lower()
 
-        if any(skip in host for skip in SKIP_DOMAINS):
+        host = (
+            parsed.netloc or ""
+        ).lower()
+
+        if any(
+            skip in host
+            for skip in SKIP_DOMAINS
+        ):
             continue
 
-        if not host.endswith((".jp", ".com", ".net", ".org", ".tokyo")):
+        if not host.endswith(
+            (
+                ".jp",
+                ".com",
+                ".net",
+                ".org",
+                ".tokyo",
+            )
+        ):
             continue
 
         return urlunparse(
@@ -389,39 +624,69 @@ def find_from_search(name: str) -> str | None:
     return None
 
 
-def add_official_urls(members: list[dict]) -> list[dict]:
+def add_official_urls(
+    members: list[dict]
+) -> list[dict]:
+
     results: list[dict] = []
 
-    for i, member in enumerate(members, 1):
+    for i, member in enumerate(
+        members,
+        1
+    ):
+
         name = member["name"]
 
-        print(f"[{i}/{len(members)}] {name}")
+        print(
+            f"[{i}/{len(members)}] {name}"
+        )
 
         official = MANUAL_OFFICIAL_URLS.get(name)
+
         wiki_url = None
 
         if not official:
+
             wiki_url = find_wikipedia_page(name)
+
             member["wiki"] = wiki_url
 
             if wiki_url:
-                wiki_html = fetch(wiki_url, timeout=12)
+
+                wiki_html = fetch(
+                    wiki_url,
+                    timeout=12
+                )
 
                 if wiki_html:
-                    official = extract_official_url(wiki_html, wiki_url)
+
+                    official = extract_official_url(
+                        wiki_html,
+                        wiki_url
+                    )
 
         if not official:
+
             official = find_from_search(name)
 
         member["official"] = official
 
-        print(f"  -> {official or '公式URLなし'}")
+        print(
+            f"  -> {official or '公式URLなし'}"
+        )
 
         results.append(member)
 
         if i % 20 == 0:
-            save_json(OUT_FILE, results)
-            print(f"checkpoint: {len(results)} 件保存")
+
+            save_json(
+                OUT_FILE,
+                results
+            )
+
+            print(
+                f"checkpoint: {len(results)} 件保存"
+            )
 
         time.sleep(0.1)
 
@@ -429,16 +694,28 @@ def add_official_urls(members: list[dict]) -> list[dict]:
 
 
 def main() -> None:
+
     members = load_members()
 
     if not members:
-        raise SystemExit("ERROR: members.xlsx から議員一覧を取得できませんでした。")
 
-    results = add_official_urls(members)
+        raise SystemExit(
+            "ERROR: members.xlsx から議員一覧を取得できませんでした。"
+        )
 
-    save_json(OUT_FILE, results)
+    results = add_official_urls(
+        members
+    )
 
-    print(f"完了: {OUT_FILE} に {len(results)} 件保存しました")
+    save_json(
+        OUT_FILE,
+        results
+    )
+
+    print(
+        f"完了: {OUT_FILE} に "
+        f"{len(results)} 件保存しました"
+    )
 
 
 if __name__ == "__main__":
