@@ -206,11 +206,6 @@ a:hover{
   font-weight:800;
 }
 
-.small{
-  color:var(--sub);
-  font-size:12px;
-}
-
 </style>
 </head>
 
@@ -258,106 +253,22 @@ GSサイトシール利用状況を自動調査したダッシュボードです
 
 <div class="section">
 
-<h2>政党別 集計</h2>
-
-<div class="table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>政党</th>
-        <th>母数</th>
-        <th>SSL利用数</th>
-        <th>SSL利用率</th>
-        <th>GS利用数</th>
-        <th>GSシェア</th>
-      </tr>
-    </thead>
-
-    <tbody id="partyBody"></tbody>
-  </table>
-</div>
-
-</div>
-
-<div class="section">
-
 <h2>認証局 シェア</h2>
 
 <div class="table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>認証局</th>
-        <th>件数</th>
-        <th>シェア</th>
-      </tr>
-    </thead>
-
-    <tbody id="issuerBody"></tbody>
-  </table>
-</div>
-
-</div>
-
-<div class="section">
-
-<h2>議員一覧</h2>
-
-<div class="controls">
-
-<input
-  id="searchInput"
-  type="text"
-  placeholder="名前・URL・認証局で検索"
-/>
-
-<select id="houseFilter">
-  <option value="">すべての院</option>
-  <option value="衆議院">衆議院</option>
-  <option value="参議院">参議院</option>
-</select>
-
-<select id="httpsFilter">
-  <option value="">HTTPSすべて</option>
-  <option value="true">HTTPSあり</option>
-  <option value="false">HTTPSなし</option>
-</select>
-
-<select id="gsFilter">
-  <option value="">GS証明書すべて</option>
-  <option value="true">GSあり</option>
-  <option value="false">GSなし</option>
-</select>
-
-</div>
-
-<div class="table-wrap">
-
 <table>
 
 <thead>
 <tr>
-  <th id="sortHouse">院</th>
-  <th id="sortParty">政党</th>
-  <th id="sortName">氏名</th>
-  <th>公式サイト</th>
-  <th>HTTPS</th>
   <th>認証局</th>
-  <th>GS証明書</th>
-  <th>GSシール</th>
+  <th>件数</th>
+  <th>シェア</th>
 </tr>
 </thead>
 
-<tbody id="tbody">
-<tr>
-<td colspan="8">読み込み中...</td>
-</tr>
-</tbody>
+<tbody id="issuerBody"></tbody>
 
 </table>
-
-</div>
-
 </div>
 
 </div>
@@ -366,22 +277,6 @@ GSサイトシール利用状況を自動調査したダッシュボードです
 
 let allData = [];
 
-let currentSort = "party";
-let sortAsc = true;
-
-const badge = (v) => {
-
-  if(v === true){
-    return `<span class="badge yes">あり</span>`;
-  }
-
-  if(v === false){
-    return `<span class="badge no">なし</span>`;
-  }
-
-  return `<span class="badge unknown">不明</span>`;
-};
-
 const escapeHtml = (str) => {
   return String(str ?? "")
     .replaceAll("&","&amp;")
@@ -389,145 +284,85 @@ const escapeHtml = (str) => {
     .replaceAll(">","&gt;");
 };
 
-const link = (url) => {
-
-  if(!url){
-    return "-";
-  }
-
-  return `
-    <a href="${escapeHtml(url)}" target="_blank">
-      ${escapeHtml(url)}
-    </a>
-  `;
-};
-
-const updateSummary = (data) => {
-
-  const total = data.length;
-
-  const sslCount =
-    data.filter(x => x.https === true).length;
-
-  const gsCount =
-    data.filter(x => x.gs_cert === true).length;
-
-  const sealCount =
-    data.filter(x => x.gs_seal === true).length;
-
-  const sslRate =
-    total
-      ? ((sslCount / total) * 100).toFixed(1)
-      : "0.0";
-
-  const gsShare =
-    sslCount
-      ? ((gsCount / sslCount) * 100).toFixed(1)
-      : "0.0";
-
-  document.getElementById("total").textContent =
-    total;
-
-  document.getElementById("sslCount").textContent =
-    sslCount;
-
-  document.getElementById("sslRate").textContent =
-    `${sslRate}%`;
-
-  document.getElementById("gsCount").textContent =
-    gsCount;
-
-  document.getElementById("gsShare").textContent =
-    `${gsShare}%`;
-
-  document.getElementById("sealCount").textContent =
-    sealCount;
-};
-
-const renderPartyStats = (data) => {
-
-  const stats = {};
-
-  for(const row of data){
-
-    const party = row.party || "不明";
-
-    if(!stats[party]){
-      stats[party] = {
-        total:0,
-        ssl:0,
-        gs:0
-      };
-    }
-
-    stats[party].total++;
-
-    if(row.https === true){
-      stats[party].ssl++;
-    }
-
-    if(row.gs_cert === true){
-      stats[party].gs++;
-    }
-  }
-
-  const html =
-    Object.entries(stats)
-      .sort((a,b)=>b[1].total-a[1].total)
-      .map(([party,s])=>{
-
-        const sslRate =
-          s.total
-            ? ((s.ssl/s.total)*100).toFixed(1)
-            : "0.0";
-
-        const gsShare =
-          s.ssl
-            ? ((s.gs/s.ssl)*100).toFixed(1)
-            : "0.0";
-
-        let cls = "";
-
-        if(gsShare >= 30){
-          cls = "rank1";
-        }else if(gsShare >= 20){
-          cls = "rank2";
-        }else{
-          cls = "rank3";
-        }
-
-        return `
-          <tr>
-            <td>${party}</td>
-            <td>${s.total}</td>
-            <td>${s.ssl}</td>
-            <td>${sslRate}%</td>
-            <td>${s.gs}</td>
-            <td class="${cls}">
-              ${gsShare}%
-            </td>
-          </tr>
-        `;
-      })
-      .join("");
-
-  document.getElementById("partyBody").innerHTML =
-    html;
-};
-
 const renderIssuerStats = (data) => {
+
+  // 認証局名をまとめる
+  const simplifyIssuer = (issuer) => {
+
+    if(!issuer){
+      return "不明";
+    }
+
+    const s = issuer.toLowerCase();
+
+    if(s.includes("globalsign")){
+      return "GlobalSign";
+    }
+
+    if(s.includes("let's encrypt")){
+      return "Let's Encrypt";
+    }
+
+    if(s.includes("google trust")){
+      return "Google Trust Services";
+    }
+
+    if(s.includes("jprs")){
+      return "JPRS";
+    }
+
+    if(s.includes("digicert")){
+      return "DigiCert";
+    }
+
+    if(s.includes("amazon")){
+      return "Amazon";
+    }
+
+    if(s.includes("cybertrust")){
+      return "Cybertrust";
+    }
+
+    if(s.includes("cloudsecure")){
+      return "CloudSecure";
+    }
+
+    if(s.includes("sectigo")){
+      return "Sectigo";
+    }
+
+    if(s.includes("gehirn")){
+      return "Gehirn";
+    }
+
+    if(s.includes("fujissl")){
+      return "FujiSSL";
+    }
+
+    if(s.includes("godaddy")){
+      return "GoDaddy";
+    }
+
+    if(s.includes("secom")){
+      return "SECOM";
+    }
+
+    return issuer;
+  };
 
   const issuerMap = {};
 
+  // HTTPSのみ
   const sslRows =
     data.filter(x => x.https === true);
 
   for(const row of sslRows){
 
     const issuer =
-      row.issuer || "不明";
+      simplifyIssuer(row.issuer);
 
     issuerMap[issuer] ??= 0;
+
     issuerMap[issuer]++;
   }
 
@@ -537,13 +372,29 @@ const renderIssuerStats = (data) => {
       .map(([issuer,count])=>{
 
         const share =
-          ((count / sslRows.length) * 100).toFixed(1);
+          ((count / sslRows.length) * 100)
+            .toFixed(1);
+
+        let cls = "";
+
+        // GlobalSign強調
+        if(issuer === "GlobalSign"){
+          cls = "highlight";
+        }
 
         return `
           <tr>
-            <td>${issuer}</td>
-            <td>${count}</td>
-            <td>${share}%</td>
+            <td class="${cls}">
+              ${issuer}
+            </td>
+
+            <td>
+              ${count}
+            </td>
+
+            <td>
+              ${share}%
+            </td>
           </tr>
         `;
       })
@@ -553,187 +404,14 @@ const renderIssuerStats = (data) => {
     html;
 };
 
-const getFilteredData = () => {
-
-  const keyword =
-    document.getElementById("searchInput")
-      .value
-      .trim()
-      .toLowerCase();
-
-  const house =
-    document.getElementById("houseFilter").value;
-
-  const https =
-    document.getElementById("httpsFilter").value;
-
-  const gs =
-    document.getElementById("gsFilter").value;
-
-  const filtered = allData.filter(row => {
-
-    const text = [
-      row.house,
-      row.party,
-      row.name,
-      row.official,
-      row.issuer
-    ]
-    .join(" ")
-    .toLowerCase();
-
-    if(keyword && !text.includes(keyword)){
-      return false;
-    }
-
-    if(house && row.house !== house){
-      return false;
-    }
-
-    if(https && String(row.https) !== https){
-      return false;
-    }
-
-    if(gs && String(row.gs_cert) !== gs){
-      return false;
-    }
-
-    return true;
-  });
-
-  filtered.sort((a,b)=>{
-
-    const av =
-      String(a[currentSort] || "").toLowerCase();
-
-    const bv =
-      String(b[currentSort] || "").toLowerCase();
-
-    if(av < bv){
-      return sortAsc ? -1 : 1;
-    }
-
-    if(av > bv){
-      return sortAsc ? 1 : -1;
-    }
-
-    return 0;
-  });
-
-  return filtered;
-};
-
-const render = () => {
-
-  const data = getFilteredData();
-
-  updateSummary(data);
-
-  renderPartyStats(data);
-
-  renderIssuerStats(data);
-
-  const html = data.map(row => {
-
-    return `
-      <tr>
-        <td>${escapeHtml(row.house)}</td>
-        <td>${escapeHtml(row.party || "-")}</td>
-        <td>${escapeHtml(row.name)}</td>
-        <td>${link(row.official)}</td>
-        <td>${badge(row.https)}</td>
-        <td>${escapeHtml(row.issuer || "-")}</td>
-        <td>${badge(row.gs_cert)}</td>
-        <td>${badge(row.gs_seal)}</td>
-      </tr>
-    `;
-  }).join("");
-
-  document.getElementById("tbody").innerHTML =
-    html;
-};
-
-const setupEvents = () => {
-
-  for(const id of [
-    "searchInput",
-    "houseFilter",
-    "httpsFilter",
-    "gsFilter"
-  ]){
-
-    document
-      .getElementById(id)
-      .addEventListener("input", render);
-
-    document
-      .getElementById(id)
-      .addEventListener("change", render);
-  }
-
-  document.getElementById("sortParty")
-    .addEventListener("click", ()=>{
-
-      if(currentSort === "party"){
-        sortAsc = !sortAsc;
-      }else{
-        currentSort = "party";
-        sortAsc = true;
-      }
-
-      render();
-  });
-
-  document.getElementById("sortName")
-    .addEventListener("click", ()=>{
-
-      if(currentSort === "name"){
-        sortAsc = !sortAsc;
-      }else{
-        currentSort = "name";
-        sortAsc = true;
-      }
-
-      render();
-  });
-
-  document.getElementById("sortHouse")
-    .addEventListener("click", ()=>{
-
-      if(currentSort === "house"){
-        sortAsc = !sortAsc;
-      }else{
-        currentSort = "house";
-        sortAsc = true;
-      }
-
-      render();
-  });
-};
-
 const main = async () => {
 
-  try{
+  const res =
+    await fetch("./data.json?ts=" + Date.now());
 
-    const res =
-      await fetch("./data.json?ts=" + Date.now());
+  allData = await res.json();
 
-    allData = await res.json();
-
-    setupEvents();
-
-    render();
-
-  }catch(error){
-
-    document.getElementById("tbody").innerHTML = `
-      <tr>
-        <td colspan="8">
-          ${escapeHtml(error.message)}
-        </td>
-      </tr>
-    `;
-  }
+  renderIssuerStats(allData);
 };
 
 main();
