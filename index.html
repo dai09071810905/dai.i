@@ -1,578 +1,466 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>国会議員サイト SSL / GlobalSign 調査</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <style>
-    body{
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      margin:24px;
-      background:#f6f8fa;
-      color:#222;
-    }
+<title>国会議員 SSL / GlobalSign 調査</title>
 
-    h1{
-      font-size:28px;
-      margin-bottom:8px;
-    }
+<style>
 
-    h2{
-      margin-top:40px;
-      margin-bottom:12px;
-    }
+:root{
+  --bg:#f4f7fb;
+  --card:#ffffff;
+  --line:#e5e7eb;
+  --text:#111827;
+  --sub:#6b7280;
+  --blue:#2563eb;
+  --green:#16a34a;
+  --red:#dc2626;
+  --yellow:#ca8a04;
+}
 
-    .description{
-      color:#666;
-      margin-bottom:24px;
-      line-height:1.6;
-    }
+*{
+  box-sizing:border-box;
+}
 
-    .summary{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-      gap:16px;
-      margin-bottom:32px;
-    }
+body{
+  margin:0;
+  padding:24px;
+  background:var(--bg);
+  color:var(--text);
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
 
-    .card{
-      background:#fff;
-      border-radius:14px;
-      padding:20px;
-      box-shadow:0 1px 4px rgba(0,0,0,0.08);
-    }
+.container{
+  max-width:1600px;
+  margin:auto;
+}
 
-    .card .label{
-      color:#666;
-      font-size:13px;
-    }
+h1{
+  font-size:32px;
+  margin:0 0 10px;
+}
 
-    .card .value{
-      font-size:32px;
-      font-weight:700;
-      margin-top:6px;
-    }
+.description{
+  color:var(--sub);
+  line-height:1.7;
+  margin-bottom:28px;
+}
 
-    .controls{
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap;
-      margin-bottom:20px;
-    }
+.summary{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:18px;
+  margin-bottom:30px;
+}
 
-    input,select{
-      padding:10px;
-      border:1px solid #ccc;
-      border-radius:8px;
-      background:#fff;
-      font-size:14px;
-    }
+.card{
+  background:var(--card);
+  border-radius:18px;
+  padding:22px;
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.05),
+    0 10px 25px rgba(0,0,0,0.03);
+}
 
-    input{
-      min-width:280px;
-    }
+.card-label{
+  font-size:13px;
+  color:var(--sub);
+}
 
-    table{
-      width:100%;
-      border-collapse:collapse;
-      background:#fff;
-      border-radius:12px;
-      overflow:hidden;
-      box-shadow:0 1px 4px rgba(0,0,0,0.08);
-      margin-bottom:24px;
-    }
+.card-value{
+  font-size:34px;
+  font-weight:800;
+  margin-top:8px;
+}
 
-    th,td{
-      padding:10px 12px;
-      border-bottom:1px solid #eee;
-      text-align:left;
-      font-size:14px;
-      vertical-align:top;
-    }
+.card-sub{
+  margin-top:6px;
+  color:var(--sub);
+  font-size:13px;
+}
 
-    th{
-      background:#f0f2f5;
-      font-weight:700;
-      white-space:nowrap;
-    }
+.section{
+  margin-top:40px;
+}
 
-    tr:hover{
-      background:#fafafa;
-    }
+.section h2{
+  margin-bottom:14px;
+  font-size:22px;
+}
 
-    a{
-      color:#0969da;
-      text-decoration:none;
-    }
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-bottom:18px;
+}
 
-    a:hover{
-      text-decoration:underline;
-    }
+input,
+select{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:11px 14px;
+  font-size:14px;
+}
 
-    .badge{
-      display:inline-block;
-      padding:3px 8px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:700;
-      white-space:nowrap;
-    }
+input{
+  min-width:280px;
+}
 
-    .yes{
-      background:#d1fadf;
-      color:#067647;
-    }
+.table-wrap{
+  overflow:auto;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.05),
+    0 10px 25px rgba(0,0,0,0.03);
+}
 
-    .no{
-      background:#fee4e2;
-      color:#b42318;
-    }
+table{
+  width:100%;
+  border-collapse:collapse;
+}
 
-    .unknown{
-      background:#eee;
-      color:#555;
-    }
+th{
+  background:#f9fafb;
+  color:#374151;
+  font-size:13px;
+  text-align:left;
+  padding:14px;
+  position:sticky;
+  top:0;
+  z-index:1;
+  border-bottom:1px solid var(--line);
+}
 
-    .issuer{
-      max-width:260px;
-      word-break:break-word;
-    }
+td{
+  padding:13px 14px;
+  border-bottom:1px solid #f1f1f1;
+  font-size:14px;
+  vertical-align:top;
+}
 
-    .error{
-      color:#999;
-      font-size:12px;
-      max-width:260px;
-      word-break:break-word;
-    }
+tr:hover{
+  background:#fafcff;
+}
 
-    .highlight{
-      font-weight:bold;
-      color:#0969da;
-    }
-  </style>
+a{
+  color:var(--blue);
+  text-decoration:none;
+}
+
+a:hover{
+  text-decoration:underline;
+}
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  padding:4px 10px;
+  font-size:12px;
+  font-weight:700;
+}
+
+.yes{
+  background:#dcfce7;
+  color:#166534;
+}
+
+.no{
+  background:#fee2e2;
+  color:#991b1b;
+}
+
+.unknown{
+  background:#e5e7eb;
+  color:#374151;
+}
+
+.highlight{
+  font-weight:800;
+  color:var(--blue);
+}
+
+.rank1{
+  color:#16a34a;
+  font-weight:800;
+}
+
+.rank2{
+  color:#ca8a04;
+  font-weight:800;
+}
+
+.rank3{
+  color:#dc2626;
+  font-weight:800;
+}
+
+.small{
+  color:var(--sub);
+  font-size:12px;
+}
+
+</style>
 </head>
 
 <body>
 
-  <h1>国会議員サイト SSL / GlobalSign 調査</h1>
+<div class="container">
 
-  <div class="description">
-    Wikipediaから公式サイトを取得し、HTTPS証明書・認証局・GlobalSign証明書・GSサイトシールを確認した一覧です。
+<h1>国会議員 SSL / GlobalSign 調査</h1>
+
+<div class="description">
+国会議員公式サイトのHTTPS利用状況、認証局、GlobalSign証明書、
+GSサイトシール利用状況を自動調査したダッシュボードです。
+</div>
+
+<div class="summary">
+
+  <div class="card">
+    <div class="card-label">総議員数</div>
+    <div class="card-value" id="total">-</div>
   </div>
 
-  <div class="summary">
-
-    <div class="card">
-      <div class="label">総件数</div>
-      <div class="value" id="total">-</div>
-    </div>
-
-    <div class="card">
-      <div class="label">SSL利用数</div>
-      <div class="value" id="httpsCount">-</div>
-    </div>
-
-    <div class="card">
-      <div class="label">SSL利用率</div>
-      <div class="value" id="httpsRate">-</div>
-    </div>
-
-    <div class="card">
-      <div class="label">GS利用数</div>
-      <div class="value" id="gsCertCount">-</div>
-    </div>
-
-    <div class="card">
-      <div class="label">GSシェア</div>
-      <div class="value" id="gsShare">-</div>
-    </div>
-
-    <div class="card">
-      <div class="label">GSサイトシール</div>
-      <div class="value" id="gsSealCount">-</div>
-    </div>
-
+  <div class="card">
+    <div class="card-label">SSL利用数</div>
+    <div class="card-value" id="sslCount">-</div>
+    <div class="card-sub" id="sslRate">-</div>
   </div>
 
-  <h2>政党別 集計</h2>
-  <div id="partyStats"></div>
-
-  <h2>認証局シェア</h2>
-  <div id="issuerStats"></div>
-
-  <h2>一覧</h2>
-
-  <div class="controls">
-
-    <input
-      id="searchInput"
-      type="text"
-      placeholder="名前・URL・認証局で検索"
-    />
-
-    <select id="houseFilter">
-      <option value="">すべての院</option>
-      <option value="衆議院">衆議院</option>
-      <option value="参議院">参議院</option>
-    </select>
-
-    <select id="httpsFilter">
-      <option value="">HTTPSすべて</option>
-      <option value="true">HTTPSあり</option>
-      <option value="false">HTTPSなし</option>
-    </select>
-
-    <select id="gsFilter">
-      <option value="">GS証明書すべて</option>
-      <option value="true">GS証明書あり</option>
-      <option value="false">GS証明書なし</option>
-    </select>
-
+  <div class="card">
+    <div class="card-label">GS利用数</div>
+    <div class="card-value" id="gsCount">-</div>
   </div>
 
+  <div class="card">
+    <div class="card-label">GSシェア</div>
+    <div class="card-value" id="gsShare">-</div>
+    <div class="card-sub">SSL利用サイト内シェア</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">GSサイトシール</div>
+    <div class="card-value" id="sealCount">-</div>
+  </div>
+
+</div>
+
+<div class="section">
+
+<h2>政党別 集計</h2>
+
+<div class="table-wrap">
   <table>
-
     <thead>
       <tr>
-        <th>院</th>
         <th>政党</th>
-        <th>氏名</th>
-        <th>公式サイト</th>
-        <th>HTTPS</th>
-        <th>認証局</th>
-        <th>GS証明書</th>
-        <th>GSシール</th>
+        <th>母数</th>
+        <th>SSL利用数</th>
+        <th>SSL利用率</th>
+        <th>GS利用数</th>
+        <th>GSシェア</th>
       </tr>
     </thead>
 
-    <tbody id="tbody">
-      <tr>
-        <td colspan="8">読み込み中...</td>
-      </tr>
-    </tbody>
-
+    <tbody id="partyBody"></tbody>
   </table>
+</div>
 
-  <script>
+</div>
 
-    let allData = [];
+<div class="section">
 
-    const escapeHtml = (value) => {
-      return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    };
+<h2>認証局 シェア</h2>
 
-    const badge = (value) => {
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>認証局</th>
+        <th>件数</th>
+        <th>シェア</th>
+      </tr>
+    </thead>
 
-      if(value === true){
-        return '<span class="badge yes">あり</span>';
-      }
+    <tbody id="issuerBody"></tbody>
+  </table>
+</div>
 
-      if(value === false){
-        return '<span class="badge no">なし</span>';
-      }
+</div>
 
-      return '<span class="badge unknown">不明</span>';
-    };
+<div class="section">
 
-    const link = (url) => {
+<h2>議員一覧</h2>
 
-      if(!url){
-        return "-";
-      }
-
-      const safe = escapeHtml(url);
-
-      return `
-        <a href="${safe}" target="_blank">
-          ${safe}
-        </a>
-      `;
-    };
-
-    const updateSummary = (data) => {
-
-      const total = data.length;
-
-      const sslCount =
-        data.filter(x => x.https === true).length;
-
-      const gsCount =
-        data.filter(x => x.gs_cert === true).length;
-
-      const sealCount =
-        data.filter(x => x.gs_seal === true).length;
-
-      const sslRate =
-        total
-          ? ((sslCount / total) * 100).toFixed(1)
-          : "0.0";
-
-      const gsShare =
-        sslCount
-          ? ((gsCount / sslCount) * 100).toFixed(1)
-          : "0.0";
-
-      document.getElementById("total").textContent = total;
-      document.getElementById("httpsCount").textContent = sslCount;
-      document.getElementById("httpsRate").textContent = sslRate + "%";
-      document.getElementById("gsCertCount").textContent = gsCount;
-      document.getElementById("gsShare").textContent = gsShare + "%";
-      document.getElementById("gsSealCount").textContent = sealCount;
-    };
-
-    const renderPartyStats = (data) => {
-
-      const stats = {};
-
-      for(const row of data){
-
-        const party = row.party || "不明";
-
-        if(!stats[party]){
-          stats[party] = {
-            total:0,
-            ssl:0,
-            gs:0
-          };
-        }
-
-        stats[party].total++;
-
-        if(row.https === true){
-          stats[party].ssl++;
-        }
-
-        if(row.gs_cert === true){
-          stats[party].gs++;
-        }
-      }
-
-      const rows = Object.entries(stats)
-        .sort((a,b)=>b[1].total-a[1].total)
-        .map(([party,s])=>{
-
-          const sslRate =
-            s.total
-              ? ((s.ssl/s.total)*100).toFixed(1)
-              : "0.0";
-
-          const gsShare =
-            s.ssl
-              ? ((s.gs/s.ssl)*100).toFixed(1)
-              : "0.0";
-
-          return `
-            <tr>
-              <td>${escapeHtml(party)}</td>
-              <td>${s.total}</td>
-              <td>${s.ssl}</td>
-              <td>${sslRate}%</td>
-              <td>${s.gs}</td>
-              <td class="highlight">${gsShare}%</td>
-            </tr>
-          `;
-        }).join("");
-
-      document.getElementById("partyStats").innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>政党</th>
-              <th>母数</th>
-              <th>SSL利用数</th>
-              <th>SSL利用率</th>
-              <th>GS利用数</th>
-              <th>GSシェア</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}
-          </tbody>
-        </table>
-      `;
-    };
-
-    const renderIssuerStats = (data) => {
-
-      const issuerMap = {};
-
-      const sslRows =
-        data.filter(x => x.https === true);
-
-      for(const row of sslRows){
-
-        const issuer =
-          row.issuer || "不明";
-
-        issuerMap[issuer] ??= 0;
-        issuerMap[issuer]++;
-      }
-
-      const rows = Object.entries(issuerMap)
-        .sort((a,b)=>b[1]-a[1])
-        .map(([issuer,count])=>{
-
-          const share =
-            ((count / sslRows.length) * 100).toFixed(1);
-
-          return `
-            <tr>
-              <td>${escapeHtml(issuer)}</td>
-              <td>${count}</td>
-              <td>${share}%</td>
-            </tr>
-          `;
-        }).join("");
-
-      document.getElementById("issuerStats").innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>発行者</th>
-              <th>件数</th>
-              <th>シェア</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}
-          </tbody>
-        </table>
-      `;
-    };
-
-    const getFilteredData = () => {
-
-      const keyword =
-        document.getElementById("searchInput")
-          .value
-          .trim()
-          .toLowerCase();
-
-      const house =
-        document.getElementById("houseFilter").value;
-
-      const https =
-        document.getElementById("httpsFilter").value;
-
-      const gs =
-        document.getElementById("gsFilter").value;
-
-      return allData.filter(row => {
-
-        const text = [
-          row.house,
-          row.party,
-          row.name,
-          row.official,
-          row.issuer
-        ]
-        .join(" ")
-        .toLowerCase();
-
-        if(keyword && !text.includes(keyword)){
-          return false;
-        }
-
-        if(house && row.house !== house){
-          return false;
-        }
-
-        if(https && String(row.https) !== https){
-          return false;
-        }
-
-        if(gs && String(row.gs_cert) !== gs){
-          return false;
-        }
-
-        return true;
-      });
-    };
-
-    const render = () => {
-
-      const tbody =
-        document.getElementById("tbody");
-
-      const data =
-        getFilteredData();
-
-      updateSummary(data);
-
-      renderPartyStats(data);
-
-      renderIssuerStats(data);
-
-      tbody.innerHTML = data.map(row => {
-
-        return `
-          <tr>
-            <td>${escapeHtml(row.house)}</td>
-            <td>${escapeHtml(row.party || "-")}</td>
-            <td>${escapeHtml(row.name)}</td>
-            <td>${link(row.official)}</td>
-            <td>${badge(row.https)}</td>
-            <td>${escapeHtml(row.issuer || "-")}</td>
-            <td>${badge(row.gs_cert)}</td>
-            <td>${badge(row.gs_seal)}</td>
-          </tr>
-        `;
-
-      }).join("");
-    };
-
-    const setupEvents = () => {
-
-      for(const id of [
-        "searchInput",
-        "houseFilter",
-        "httpsFilter",
-        "gsFilter"
-      ]){
-        document
-          .getElementById(id)
-          .addEventListener("input", render);
-
-        document
-          .getElementById(id)
-          .addEventListener("change", render);
-      }
-    };
-
-    const main = async () => {
-
-      try{
-
-        const res =
-          await fetch("./data.json?ts=" + Date.now());
-
-        allData = await res.json();
-
-        setupEvents();
-
-        render();
-
-      }catch(error){
-
-        document.getElementById("tbody").innerHTML = `
-          <tr>
-            <td colspan="8">
-              ${escapeHtml(error.message)}
-            </td>
-          </tr>
-        `;
-      }
-    };
-
-    main();
-
-  </script>
-
-</body>
-</html>
+<div class="controls">
+
+<input
+  id="searchInput"
+  type="text"
+  placeholder="名前・URL・認証局で検索"
+/>
+
+<select id="houseFilter">
+  <option value="">すべての院</option>
+  <option value="衆議院">衆議院</option>
+  <option value="参議院">参議院</option>
+</select>
+
+<select id="httpsFilter">
+  <option value="">HTTPSすべて</option>
+  <option value="true">HTTPSあり</option>
+  <option value="false">HTTPSなし</option>
+</select>
+
+<select id="gsFilter">
+  <option value="">GS証明書すべて</option>
+  <option value="true">GSあり</option>
+  <option value="false">GSなし</option>
+</select>
+
+</div>
+
+<div class="table-wrap">
+
+<table>
+
+<thead>
+<tr>
+  <th>院</th>
+  <th>政党</th>
+  <th>氏名</th>
+  <th>公式サイト</th>
+  <th>HTTPS</th>
+  <th>認証局</th>
+  <th>GS証明書</th>
+  <th>GSシール</th>
+</tr>
+</thead>
+
+<tbody id="tbody">
+<tr>
+<td colspan="8">読み込み中...</td>
+</tr>
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let allData = [];
+
+const badge = (v) => {
+
+  if(v === true){
+    return `<span class="badge yes">あり</span>`;
+  }
+
+  if(v === false){
+    return `<span class="badge no">なし</span>`;
+  }
+
+  return `<span class="badge unknown">不明</span>`;
+};
+
+const escapeHtml = (str) => {
+  return String(str ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;");
+};
+
+const link = (url) => {
+
+  if(!url){
+    return "-";
+  }
+
+  return `
+    <a href="${escapeHtml(url)}" target="_blank">
+      ${escapeHtml(url)}
+    </a>
+  `;
+};
+
+const updateSummary = (data) => {
+
+  const total = data.length;
+
+  const sslCount =
+    data.filter(x => x.https === true).length;
+
+  const gsCount =
+    data.filter(x => x.gs_cert === true).length;
+
+  const sealCount =
+    data.filter(x => x.gs_seal === true).length;
+
+  const sslRate =
+    total
+      ? ((sslCount / total) * 100).toFixed(1)
+      : "0.0";
+
+  const gsShare =
+    sslCount
+      ? ((gsCount / sslCount) * 100).toFixed(1)
+      : "0.0";
+
+  document.getElementById("total").textContent =
+    total;
+
+  document.getElementById("sslCount").textContent =
+    sslCount;
+
+  document.getElementById("sslRate").textContent =
+    `${sslRate}%`;
+
+  document.getElementById("gsCount").textContent =
+    gsCount;
+
+  document.getElementById("gsShare").textContent =
+    `${gsShare}%`;
+
+  document.getElementById("sealCount").textContent =
+    sealCount;
+};
+
+const renderPartyStats = (data) => {
+
+  const stats = {};
+
+  for(const row of data){
+
+    const party = row.party || "不明";
+
+    if(!stats[party]){
+      stats[party] = {
+        total:0,
+        ssl:0,
+        gs:0
+      };
+    }
+
+    stats[party].total++;
+
+    if(row.https === true){
+      stats[party].ssl++;
+    }
+
+   
