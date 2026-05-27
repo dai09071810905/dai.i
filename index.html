@@ -161,21 +161,6 @@ a:hover{
   font-weight:800;
 }
 
-.rank1{
-  color:#16a34a;
-  font-weight:800;
-}
-
-.rank2{
-  color:#ca8a04;
-  font-weight:800;
-}
-
-.rank3{
-  color:#dc2626;
-  font-weight:800;
-}
-
 .controls{
   display:flex;
   gap:12px;
@@ -362,7 +347,7 @@ const simplifyIssuer = (issuer) => {
 
   if(s.includes("globalsign")) return "GlobalSign";
   if(s.includes("let's encrypt")) return "Let's Encrypt";
-  if(s.includes("google trust")) return "Google";
+  if(s.includes("google trust")) return "Google Trust Services";
   if(s.includes("jprs")) return "JPRS";
   if(s.includes("digicert")) return "DigiCert";
   if(s.includes("amazon")) return "Amazon";
@@ -392,9 +377,13 @@ const updateSummary = (data) => {
   const sealCount =
     data.filter(x => x.gs_seal === true).length;
 
+  // 全議員母数
   const sslRate =
-    ((sslCount / total) * 100).toFixed(1);
+    total
+      ? ((sslCount / total) * 100).toFixed(1)
+      : "0.0";
 
+  // GSシェア用対象政党
   const targetParties = [
     "自民",
     "れ新",
@@ -428,7 +417,7 @@ const updateSummary = (data) => {
     sslCount;
 
   document.getElementById("sslRate").textContent =
-    `${sslRate}%`;
+    `全議員母数：${sslRate}%`;
 
   document.getElementById("gsCount").textContent =
     gsCount;
