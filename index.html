@@ -1,593 +1,911 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+from __future__ import annotations
 
-<title>国会議員 SSL / GlobalSign 調査</title>
+import json
+import re
+import time
+import urllib.parse
+from pathlib import Path
+from urllib.parse import (
+    urljoin,
+    urlparse,
+    urlunparse,
+    quote_plus,
+    parse_qs,
+    urlsplit,
+    unquote,
+)
 
-<style>
-:root{
-  --bg:#f4f7fb;
-  --card:#ffffff;
-  --line:#e5e7eb;
-  --text:#111827;
-  --sub:#6b7280;
-  --blue:#2563eb;
+import requests
+from bs4 import BeautifulSoup
+
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/125.0.0.0 Safari/537.36"
+    )
 }
 
-*{ box-sizing:border-box; }
+LIST_PAGES = [
+    ("衆議院", "https://www.shugiin.go.jp/internet/itdb_annai.nsf/html/statics/syu/1giin.htm"),
+    ("参議院", "https://www.sangiin.go.jp/japanese/joho1/kousei/giin/221/giin.htm"),
+]
 
-body{
-  margin:0;
-  padding:24px;
-  background:var(--bg);
-  color:var(--text);
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+WIKI_FALLBACK_PAGES = [
+    ("衆議院", "https://ja.wikipedia.org/wiki/衆議院議員一覧"),
+    ("参議院", "https://ja.wikipedia.org/wiki/参議院議員一覧"),
+]
+
+OUT_FILE = Path("urls.json")
+
+USE_SEARCH_FALLBACK = False
+
+SKIP_DOMAINS = (
+    "wikipedia.org",
+    "wikimedia.org",
+    "twitter.com",
+    "x.com",
+    "facebook.com",
+    "instagram.com",
+    "youtube.com",
+    "youtu.be",
+    "linkedin.com",
+    "line.me",
+    "tiktok.com",
+)
+
+SKIP_PARTIES = [
+    "無所属",
+    "無所属の会",
+    "無所属クラブ",
+]
+
+MANUAL_OFFICIAL_URLS = {
+    "ラサール石井": "https://lishii.jp/",
 }
 
-.container{ max-width:1600px; margin:auto; }
-h1{ font-size:34px; margin-bottom:8px; }
-
-.description{
-  color:var(--sub);
-  line-height:1.8;
-  margin-bottom:30px;
-}
-
-.summary{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:18px;
-  margin-bottom:40px;
-}
-
-.card{
-  background:#fff;
-  border-radius:20px;
-  padding:22px;
-  box-shadow:0 1px 3px rgba(0,0,0,0.05),0 10px 25px rgba(0,0,0,0.03);
-}
-
-.card-label{ color:var(--sub); font-size:13px; }
-.card-value{ font-size:36px; font-weight:800; margin-top:10px; }
-
-.card-sub{
-  margin-top:8px;
-  font-size:13px;
-  color:var(--sub);
-  line-height:1.5;
-}
-
-.section{ margin-top:40px; }
-.section h2{ margin-bottom:16px; font-size:24px; }
-
-.table-wrap{
-  overflow:auto;
-  border-radius:20px;
-  background:#fff;
-  box-shadow:0 1px 3px rgba(0,0,0,0.05),0 10px 25px rgba(0,0,0,0.03);
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-
-th{
-  background:#f9fafb;
-  padding:14px;
-  text-align:left;
-  font-size:13px;
-  border-bottom:1px solid var(--line);
-}
-
-td{
-  padding:13px 14px;
-  border-bottom:1px solid #f1f1f1;
-  font-size:14px;
-}
-
-tr:hover{ background:#fafcff; }
-
-a{
-  color:var(--blue);
-  text-decoration:none;
-}
-
-.badge{
-  display:inline-flex;
-  border-radius:999px;
-  padding:4px 10px;
-  font-size:12px;
-  font-weight:700;
-}
-
-.yes{ background:#dcfce7; color:#166534; }
-.no{ background:#fee2e2; color:#991b1b; }
-
-.highlight{
-  color:var(--blue);
-  font-weight:800;
-}
-
-.controls{
-  display:flex;
-  gap:12px;
-  flex-wrap:wrap;
-  margin-bottom:18px;
-}
-
-input,select{
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:10px 14px;
-  background:#fff;
-}
-
-input{ min-width:280px; }
-</style>
-</head>
-
-<body>
-
-<div class="container">
-
-<h1>国会議員 SSL / GlobalSign 調査</h1>
-
-<div class="description">
-国会議員公式サイトのHTTPS利用状況、認証局、GlobalSign証明書、
-GSサイトシール利用状況を自動調査したダッシュボードです。
-</div>
-
-<div class="summary">
-  <div class="card">
-    <div class="card-label">総議員数</div>
-    <div class="card-value" id="total">-</div>
-  </div>
-
-  <div class="card">
-    <div class="card-label">SSL利用数</div>
-    <div class="card-value" id="sslCount">-</div>
-    <div class="card-sub" id="sslRate">-</div>
-  </div>
-
-  <div class="card">
-    <div class="card-label">GS利用数</div>
-    <div class="card-value" id="gsCount">-</div>
-  </div>
-
-  <div class="card">
-    <div class="card-label">GSシェア</div>
-    <div class="card-value" id="gsShare">-</div>
-    <div class="card-sub">自民・れ新・民主・立憲・国民のSSL利用サイト内シェア</div>
-  </div>
-
-  <div class="card">
-    <div class="card-label">GSサイトシール</div>
-    <div class="card-value" id="sealCount">-</div>
-  </div>
-</div>
-
-<div class="section">
-<h2>政党別 シェア</h2>
-<div class="table-wrap">
-<table>
-<thead>
-<tr>
-<th>政党</th>
-<th>母数</th>
-<th>SSL利用数</th>
-<th>SSL利用率</th>
-<th>GS利用数</th>
-<th>GSシェア</th>
-<th>GSサイトシール</th>
-</tr>
-</thead>
-<tbody id="partyBody"></tbody>
-</table>
-</div>
-</div>
-
-<div class="section">
-<h2>認証局 シェア</h2>
-<div class="table-wrap">
-<table>
-<thead>
-<tr>
-<th>認証局</th>
-<th>件数</th>
-<th>シェア</th>
-</tr>
-</thead>
-<tbody id="issuerBody"></tbody>
-</table>
-</div>
-</div>
-
-<div class="section">
-<h2>議員一覧</h2>
-
-<div class="controls">
-<input id="searchInput" type="text" placeholder="名前・政党・URL検索"/>
-
-<select id="houseFilter">
-<option value="">すべての院</option>
-<option value="衆議院">衆議院</option>
-<option value="参議院">参議院</option>
-</select>
-
-<select id="gsFilter">
-<option value="">GSすべて</option>
-<option value="true">GSあり</option>
-<option value="false">GSなし</option>
-</select>
-</div>
-
-<div class="table-wrap">
-<table>
-<thead>
-<tr>
-<th>院</th>
-<th>政党</th>
-<th>氏名</th>
-<th>公式サイト</th>
-<th>HTTPS</th>
-<th>認証局</th>
-<th>GS</th>
-</tr>
-</thead>
-<tbody id="tbody"></tbody>
-</table>
-</div>
-</div>
-
-</div>
-
-<script>
-
-let allData = [];
-
-const partyOrder = {
-  "自民": 1,
-  "国民": 2,
-  "立憲": 3,
-  "れ新": 4,
-  "民主": 5,
-  "公明": 6,
-  "維新": 7,
-  "共産": 8,
-  "参政": 9,
-  "社民": 10,
-  "保守": 11,
-  "みらい": 12,
-  "無所属": 13,
-  "不明": 99
-};
-
-const ministerPriorityNames = [
-  "高市早苗",
-  "石破茂",
-  "岸田文雄",
-  "菅義偉",
-  "麻生太郎",
-  "林芳正",
-  "加藤勝信",
-  "小泉進次郎",
-  "小野寺五典",
-  "上川陽子",
-  "河野太郎",
-  "茂木敏充",
-  "西村康稔",
-  "萩生田光一",
-  "鈴木俊一",
-  "野田聖子",
-  "稲田朋美",
-  "松山政司",
-  "森山裕",
-  "世耕弘成",
-  "古屋圭司"
-];
-
-const getPartyOrder = (party) => {
-  return partyOrder[party || "不明"] || 90;
-};
-
-const getRolePriority = (row) => {
-  const idx = ministerPriorityNames.indexOf(row.name);
-
-  if(idx >= 0){
-    return idx;
-  }
-
-  return 999;
-};
-
-const sortMembers = (data) => {
-  return [...data].sort((a,b) => {
-
-    const partyA = getPartyOrder(a.party);
-    const partyB = getPartyOrder(b.party);
-
-    if(partyA !== partyB){
-      return partyA - partyB;
-    }
-
-    const roleA = getRolePriority(a);
-    const roleB = getRolePriority(b);
-
-    if(roleA !== roleB){
-      return roleA - roleB;
-    }
-
-    const houseOrder = {
-      "衆議院": 1,
-      "参議院": 2
-    };
-
-    const houseA = houseOrder[a.house] || 9;
-    const houseB = houseOrder[b.house] || 9;
-
-    if(houseA !== houseB){
-      return houseA - houseB;
-    }
-
-    return String(a.name || "").localeCompare(
-      String(b.name || ""),
-      "ja"
-    );
-  });
-};
-
-const badge = (v) => {
-  if(v === true) return `<span class="badge yes">あり</span>`;
-  return `<span class="badge no">なし</span>`;
-};
-
-const escapeHtml = (str) => {
-  return String(str ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;");
-};
-
-const link = (url) => {
-  if(!url) return "-";
-  return `<a href="${escapeHtml(url)}" target="_blank">${escapeHtml(url)}</a>`;
-};
-
-const simplifyIssuer = (issuer) => {
-  if(!issuer) return "不明";
-
-  const s = issuer.toLowerCase();
-
-  if(s.includes("globalsign")) return "GlobalSign";
-  if(s.includes("let's encrypt")) return "Let's Encrypt";
-  if(s.includes("google trust")) return "Google Trust Services";
-  if(s.includes("jprs")) return "JPRS";
-  if(s.includes("digicert")) return "DigiCert";
-  if(s.includes("amazon")) return "Amazon";
-  if(s.includes("cybertrust")) return "Cybertrust";
-  if(s.includes("cloudsecure")) return "CloudSecure";
-  if(s.includes("sectigo")) return "Sectigo";
-  if(s.includes("gehirn")) return "Gehirn";
-  if(s.includes("fujissl")) return "FujiSSL";
-  if(s.includes("godaddy")) return "GoDaddy";
-  if(s.includes("secom")) return "SECOM";
-
-  return issuer;
-};
-
-const updateSummary = (data) => {
-  const total = data.length;
-  const sslRows = data.filter(x => x.https === true);
-  const sslCount = sslRows.length;
-  const gsCount = data.filter(x => x.gs_cert === true).length;
-  const sealCount = data.filter(x => x.gs_seal === true).length;
-
-  const sslRate =
-    total ? ((sslCount / total) * 100).toFixed(1) : "0.0";
-
-  const targetParties = ["自民","れ新","民主","立憲","国民"];
-
-  const targetSsl =
-    sslRows.filter(x => targetParties.includes(x.party));
-
-  const targetGs =
-    targetSsl.filter(x => x.gs_cert === true);
-
-  const gsShare =
-    targetSsl.length
-      ? ((targetGs.length / targetSsl.length) * 100).toFixed(1)
-      : "0.0";
-
-  document.getElementById("total").textContent = total;
-  document.getElementById("sslCount").textContent = sslCount;
-  document.getElementById("sslRate").textContent = `全議員母数：${sslRate}%`;
-  document.getElementById("gsCount").textContent = gsCount;
-  document.getElementById("gsShare").textContent = `${gsShare}%`;
-  document.getElementById("sealCount").textContent = sealCount;
-};
-
-const renderPartyStats = (data) => {
-  const partyMap = {};
-
-  for(const row of data){
-    const party = row.party || "不明";
-
-    if(!partyMap[party]){
-      partyMap[party] = {
-        total:0,
-        ssl:0,
-        gs:0,
-        seal:0
-      };
-    }
-
-    partyMap[party].total++;
-    if(row.https === true) partyMap[party].ssl++;
-    if(row.gs_cert === true) partyMap[party].gs++;
-    if(row.gs_seal === true) partyMap[party].seal++;
-  }
-
-  const html =
-    Object.entries(partyMap)
-      .sort((a,b)=>{
-        const pa = getPartyOrder(a[0]);
-        const pb = getPartyOrder(b[0]);
-
-        if(pa !== pb){
-          return pa - pb;
-        }
-
-        return b[1].total - a[1].total;
-      })
-      .map(([party,s])=>{
-
-        const sslRate =
-          s.total ? ((s.ssl / s.total) * 100).toFixed(1) : "0.0";
-
-        const gsShare =
-          s.ssl ? ((s.gs / s.ssl) * 100).toFixed(1) : "0.0";
-
-        const cls =
-          ["自民","国民","立憲","れ新","民主"].includes(party)
-            ? "highlight"
-            : "";
-
-        return `
-          <tr>
-            <td class="${cls}">${escapeHtml(party)}</td>
-            <td>${s.total}</td>
-            <td>${s.ssl}</td>
-            <td>${sslRate}%</td>
-            <td>${s.gs}</td>
-            <td>${gsShare}%</td>
-            <td>${s.seal}</td>
-          </tr>
-        `;
-      })
-      .join("");
-
-  document.getElementById("partyBody").innerHTML = html;
-};
-
-const renderIssuerStats = (data) => {
-  const issuerMap = {};
-  const sslRows = data.filter(x => x.https === true);
-
-  for(const row of sslRows){
-    const issuer = simplifyIssuer(row.issuer);
-    issuerMap[issuer] ??= 0;
-    issuerMap[issuer]++;
-  }
-
-  const groupedMap = {};
-
-  for(const [issuer, count] of Object.entries(issuerMap)){
-    if(count <= 1){
-      groupedMap["その他"] ??= 0;
-      groupedMap["その他"] += count;
-    }else{
-      groupedMap[issuer] = count;
-    }
-  }
-
-  const html =
-    Object.entries(groupedMap)
-      .sort((a,b)=>b[1]-a[1])
-      .map(([issuer,count])=>{
-
-        const share =
-          sslRows.length ? ((count / sslRows.length) * 100).toFixed(1) : "0.0";
-
-        const cls = issuer === "GlobalSign" ? "highlight" : "";
-
-        return `
-          <tr>
-            <td class="${cls}">${escapeHtml(issuer)}</td>
-            <td>${count}</td>
-            <td>${share}%</td>
-          </tr>
-        `;
-      })
-      .join("");
-
-  document.getElementById("issuerBody").innerHTML = html;
-};
-
-const renderTable = (data) => {
-  const sortedData = sortMembers(data);
-
-  const html = sortedData.map(row => {
-    return `
-      <tr>
-        <td>${escapeHtml(row.house)}</td>
-        <td>${escapeHtml(row.party || "-")}</td>
-        <td>${escapeHtml(row.name)}</td>
-        <td>${link(row.official)}</td>
-        <td>${badge(row.https)}</td>
-        <td>${escapeHtml(simplifyIssuer(row.issuer))}</td>
-        <td>${badge(row.gs_cert)}</td>
-      </tr>
-    `;
-  }).join("");
-
-  document.getElementById("tbody").innerHTML = html;
-};
-
-const getFilteredData = () => {
-  const keyword =
-    document.getElementById("searchInput").value.toLowerCase();
-
-  const house =
-    document.getElementById("houseFilter").value;
-
-  const gs =
-    document.getElementById("gsFilter").value;
-
-  return allData.filter(row => {
-    const text = [
-      row.name,
-      row.party,
-      row.official
-    ].join(" ").toLowerCase();
-
-    if(keyword && !text.includes(keyword)) return false;
-    if(house && row.house !== house) return false;
-    if(gs && String(row.gs_cert) !== gs) return false;
-
-    return true;
-  });
-};
-
-const render = () => {
-  const data = getFilteredData();
-
-  updateSummary(data);
-  renderPartyStats(data);
-  renderIssuerStats(data);
-  renderTable(data);
-};
-
-const setupEvents = () => {
-  for(const id of ["searchInput","houseFilter","gsFilter"]){
-    document.getElementById(id).addEventListener("input", render);
-    document.getElementById(id).addEventListener("change", render);
-  }
-};
-
-const main = async () => {
-  const res = await fetch("./data.json?ts=" + Date.now());
-  allData = await res.json();
-
-  setupEvents();
-  render();
-};
-
-main();
-
-</script>
-
-</body>
-</html>
+PARTY_RULES = [
+    ("自由民主党", "自民"),
+    ("自民党", "自民"),
+    ("自由民主", "自民"),
+    ("自民", "自民"),
+
+    ("立憲民主党", "立憲"),
+    ("立憲民主", "立憲"),
+    ("立憲", "立憲"),
+
+    ("日本維新の会", "維新"),
+    ("維新", "維新"),
+
+    ("公明党", "公明"),
+    ("公明", "公明"),
+
+    ("国民民主党", "国民"),
+    ("国民民主", "国民"),
+
+    ("日本共産党", "共産"),
+    ("共産党", "共産"),
+    ("共産", "共産"),
+
+    ("れいわ新選組", "れ新"),
+    ("れいわ", "れ新"),
+
+    ("参政党", "参政"),
+    ("参政", "参政"),
+
+    ("社会民主党", "社民"),
+    ("社民党", "社民"),
+    ("社民", "社民"),
+
+    ("日本保守党", "保守"),
+    ("保守", "保守"),
+
+    ("チームみらい", "みらい"),
+    ("みらい", "みらい"),
+
+    ("無所属", "無所属"),
+]
+
+NAME_RE = re.compile(
+    r"^[一-龥々ぁ-んァ-ヶーA-Za-z・\s]{2,20}$"
+)
+
+
+def fetch(url: str, timeout: int = 15) -> str | None:
+
+    for attempt in range(1, 4):
+
+        try:
+
+            res = requests.get(
+                url,
+                headers=HEADERS,
+                timeout=timeout,
+            )
+
+            res.raise_for_status()
+
+            res.encoding = res.apparent_encoding
+
+            return res.text
+
+        except Exception as e:
+
+            print(
+                f"[fetch error {attempt}/3] {url}: {e}"
+            )
+
+            time.sleep(1)
+
+    return None
+
+
+def save_json(path: Path, data: list[dict]) -> None:
+
+    tmp = path.with_suffix(
+        path.suffix + ".tmp"
+    )
+
+    tmp.write_text(
+        json.dumps(
+            data,
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    tmp.replace(path)
+
+
+def clean_name(value: str) -> str:
+
+    value = value.strip()
+
+    value = re.sub(
+        r"\s*[（(].*$",
+        "",
+        value
+    )
+
+    value = re.sub(
+        r"\s*\[.*?\]\s*",
+        "",
+        value
+    )
+
+    value = (
+        value
+        .replace(" ", "")
+        .replace("　", "")
+        .replace("\n", "")
+        .replace("\r", "")
+    )
+
+    return value
+
+
+def normalize_party(text: str) -> str:
+
+    text = text or ""
+
+    for keyword, party in PARTY_RULES:
+
+        if keyword in text:
+            return party
+
+    return "不明"
+
+
+def is_probable_person_name(name: str) -> bool:
+
+    if not name:
+        return False
+
+    name = clean_name(name)
+
+    if len(name) < 2 or len(name) > 12:
+        return False
+
+    ng_words = [
+        "党",
+        "会派",
+        "委員",
+        "議会",
+        "制度",
+        "政府",
+        "国会",
+        "法律",
+        "法案",
+        "選挙",
+        "比例",
+        "ブロック",
+        "一覧",
+        "カテゴリ",
+        "日本",
+        "政治",
+        "民主制",
+        "主権",
+        "内閣",
+        "行政",
+        "立法",
+        "司法",
+        "天皇",
+        "憲法",
+        "自治",
+        "免責",
+        "特権",
+        "新緑風会",
+        "沖縄の風",
+        "無所属クラブ",
+        "参議院議長",
+        "衆議院副議長",
+        "議長",
+        "副議長",
+        "チームみらい",
+        "れいわ新選組",
+        "日本維新の会",
+        "日本保守党",
+        "自由民主党",
+        "立憲民主党",
+        "国民民主党",
+        "日本共産党",
+        "社会民主党",
+        "公明党",
+        "参政党",
+        "あ行",
+        "か行",
+        "さ行",
+        "た行",
+        "な行",
+        "は行",
+        "ま行",
+        "や行",
+        "ら行",
+        "わ行",
+    ]
+
+    for ng in ng_words:
+
+        if name == ng or ng in name:
+            return False
+
+    if "/" in name or ":" in name:
+        return False
+
+    if re.fullmatch(
+        r"[A-Za-z0-9]+",
+        name
+    ):
+        return False
+
+    if not NAME_RE.match(name):
+        return False
+
+    return True
+
+
+def normalize_external_url(
+    href: str,
+    base_url: str
+) -> str | None:
+
+    if not href:
+        return None
+
+    href = urljoin(base_url, href)
+
+    parsed = urlparse(href)
+
+    if parsed.scheme not in (
+        "http",
+        "https",
+    ):
+        return None
+
+    host = (
+        parsed.netloc or ""
+    ).lower()
+
+    if any(
+        skip in host
+        for skip in SKIP_DOMAINS
+    ):
+        return None
+
+    if parsed.path.lower().endswith(
+        (
+            ".pdf",
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".svg",
+            ".webp",
+        )
+    ):
+        return None
+
+    return urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path or "/",
+            "",
+            parsed.query,
+            "",
+        )
+    )
+
+
+def normalize_wiki_url(
+    href: str
+) -> str | None:
+
+    if not href:
+        return None
+
+    if href.startswith("//"):
+        href = "https:" + href
+
+    elif href.startswith("/wiki/"):
+        href = "https://ja.wikipedia.org" + href
+
+    elif href.startswith("./"):
+        href = urljoin(
+            "https://ja.wikipedia.org/wiki/",
+            href
+        )
+
+    parsed = urlparse(href)
+
+    if parsed.netloc != "ja.wikipedia.org":
+        return None
+
+    if not parsed.path.startswith("/wiki/"):
+        return None
+
+    page_name = urllib.parse.unquote(
+        parsed.path.split("/wiki/", 1)[1]
+    )
+
+    if ":" in page_name:
+        return None
+
+    return href.split("#", 1)[0]
+
+
+def collect_members_from_official_page(
+    house: str,
+    list_url: str
+) -> list[dict]:
+
+    html = fetch(list_url)
+
+    if not html:
+
+        print(f"{house}: 公式ページHTML取得失敗")
+
+        return []
+
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
+    )
+
+    members: list[dict] = []
+
+    seen: set[tuple[str, str]] = set()
+
+    for a in soup.select("a[href]"):
+
+        href = a.get("href", "")
+
+        text = a.get_text(
+            " ",
+            strip=True
+        )
+
+        name = clean_name(text)
+
+        if house == "参議院":
+
+            if "/profile/" not in href:
+                continue
+
+        if house == "衆議院":
+
+            if not (
+                "itdb_giinprof" in href
+                or "giin" in href.lower()
+                or is_probable_person_name(name)
+            ):
+                continue
+
+        if not is_probable_person_name(name):
+            continue
+
+        key = (house, name)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        parent_text = ""
+
+        tr = a.find_parent("tr")
+
+        if tr:
+            parent_text = tr.get_text(" ", strip=True)
+
+        else:
+
+            parent = a.find_parent(
+                ["li", "p", "div"]
+            )
+
+            if parent:
+                parent_text = parent.get_text(
+                    " ",
+                    strip=True
+                )
+
+        party = normalize_party(parent_text)
+
+        if party in SKIP_PARTIES:
+            continue
+
+        profile_url = urljoin(
+            list_url,
+            href
+        )
+
+        members.append(
+            {
+                "house": house,
+                "party": party,
+                "name": name,
+                "profile": profile_url,
+                "wiki": None,
+                "official": None,
+            }
+        )
+
+    print(
+        f"{house}: 公式ページ 有効議員数 {len(members)} 件"
+    )
+
+    return members
+
+
+def collect_members_from_wikipedia(
+    house: str,
+    list_url: str
+) -> list[dict]:
+
+    html = fetch(list_url)
+
+    if not html:
+
+        print(f"{house}: Wikipedia HTML取得失敗")
+
+        return []
+
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
+    )
+
+    members: list[dict] = []
+
+    seen: set[tuple[str, str]] = set()
+
+    content = (
+        soup.select_one("div.mw-parser-output")
+        or soup
+    )
+
+    for a in content.select("a[href]"):
+
+        href = a.get("href", "")
+
+        if any(
+            x in href
+            for x in [
+                "カテゴリ",
+                "Category",
+                "一覧",
+                "Template",
+                "Help:",
+                "Portal:",
+                "File:",
+                "ファイル",
+            ]
+        ):
+            continue
+
+        wiki_url = normalize_wiki_url(href)
+
+        if not wiki_url:
+            continue
+
+        title = (
+            a.get("title")
+            or a.get_text(" ", strip=True)
+        )
+
+        name = clean_name(title)
+
+        if not is_probable_person_name(name):
+            continue
+
+        key = (house, name)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        tr = a.find_parent("tr")
+
+        parent_text = (
+            tr.get_text(" ", strip=True)
+            if tr else ""
+        )
+
+        party = normalize_party(parent_text)
+
+        if party in SKIP_PARTIES:
+            continue
+
+        members.append(
+            {
+                "house": house,
+                "party": party,
+                "name": name,
+                "profile": None,
+                "wiki": wiki_url,
+                "official": None,
+            }
+        )
+
+    print(
+        f"{house}: Wikipedia 有効議員数 {len(members)} 件"
+    )
+
+    return members
+
+
+def collect_members(
+    house: str,
+    official_url: str
+) -> list[dict]:
+
+    official_members = collect_members_from_official_page(
+        house,
+        official_url
+    )
+
+    min_expected = (
+        400
+        if house == "衆議院"
+        else 200
+    )
+
+    if len(official_members) >= min_expected:
+        return official_members
+
+    print(
+        f"{house}: Wikipediaへフォールバック"
+    )
+
+    wiki_url = dict(
+        WIKI_FALLBACK_PAGES
+    ).get(house)
+
+    if not wiki_url:
+        return official_members
+
+    wiki_members = collect_members_from_wikipedia(
+        house,
+        wiki_url
+    )
+
+    if len(wiki_members) > len(official_members):
+        return wiki_members
+
+    return official_members
+
+
+def find_wikipedia_page(
+    name: str
+) -> str | None:
+
+    search_url = (
+        "https://ja.wikipedia.org/w/index.php?search="
+        + quote_plus(name)
+    )
+
+    html = fetch(
+        search_url,
+        timeout=12
+    )
+
+    if not html:
+        return None
+
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
+    )
+
+    first = soup.select_one(
+        ".mw-search-result-heading a[href]"
+    )
+
+    if first:
+        return normalize_wiki_url(
+            first.get("href", "")
+        )
+
+    if soup.select_one("#firstHeading"):
+
+        return normalize_wiki_url(
+            "https://ja.wikipedia.org/wiki/"
+            + quote_plus(name)
+        )
+
+    return None
+
+
+def find_section_heading(
+    soup: BeautifulSoup,
+    keywords: list[str]
+):
+
+    for tag in soup.find_all(
+        ["h2", "h3", "h4"]
+    ):
+
+        text = tag.get_text(
+            strip=True
+        )
+
+        if any(
+            kw in text
+            for kw in keywords
+        ):
+            return tag
+
+    return None
+
+
+def extract_official_url(
+    wiki_html: str,
+    wiki_url: str
+) -> str | None:
+
+    soup = BeautifulSoup(
+        wiki_html,
+        "html.parser"
+    )
+
+    def valid_links(parent):
+
+        if not parent:
+            return []
+
+        links = []
+
+        for a in parent.find_all(
+            "a",
+            href=True
+        ):
+
+            url = normalize_external_url(
+                a["href"],
+                wiki_url
+            )
+
+            if url:
+                links.append(url)
+
+        return links
+
+    official_keywords = [
+        "公式",
+        "ウェブサイト",
+        "ホームページ",
+        "website",
+        "web site",
+        "hp",
+    ]
+
+    for table in soup.select(
+        "table[class*='infobox']"
+    ):
+
+        for row in table.find_all("tr"):
+
+            label_cell = row.find(
+                ["th", "td"]
+            )
+
+            if not label_cell:
+                continue
+
+            label = label_cell.get_text(
+                " ",
+                strip=True
+            ).lower()
+
+            if any(
+                k in label
+                for k in official_keywords
+            ):
+
+                links = valid_links(row)
+
+                if links:
+                    return links[0]
+
+    heading = find_section_heading(
+        soup,
+        [
+            "外部リンク",
+            "External links",
+            "外部リンク一覧",
+        ],
+    )
+
+    if heading:
+
+        for sibling in heading.find_next_siblings():
+
+            if sibling.name in [
+                "h2",
+                "h3",
+                "h4",
+            ]:
+                break
+
+            links = valid_links(sibling)
+
+            if links:
+                return links[0]
+
+    for table in soup.select(
+        "table[class*='infobox']"
+    ):
+
+        links = valid_links(table)
+
+        if links:
+            return links[0]
+
+    return None
+
+
+def add_official_urls(
+    members: list[dict]
+) -> list[dict]:
+
+    results: list[dict] = []
+
+    for i, member in enumerate(
+        members,
+        1
+    ):
+
+        name = member["name"]
+
+        print(
+            f"[{i}/{len(members)}] {name}"
+        )
+
+        official = MANUAL_OFFICIAL_URLS.get(name)
+
+        wiki_url = member.get("wiki")
+
+        if not official:
+
+            if not wiki_url:
+
+                wiki_url = find_wikipedia_page(name)
+
+                member["wiki"] = wiki_url
+
+            if wiki_url:
+
+                wiki_html = fetch(
+                    wiki_url,
+                    timeout=12
+                )
+
+                if wiki_html:
+
+                    official = extract_official_url(
+                        wiki_html,
+                        wiki_url
+                    )
+
+        member["official"] = official
+
+        print(
+            f"  -> {official or '公式URLなし'}"
+        )
+
+        results.append(member)
+
+        if i % 20 == 0:
+
+            save_json(
+                OUT_FILE,
+                results
+            )
+
+            print(
+                f"checkpoint: {len(results)} 件保存"
+            )
+
+        time.sleep(0.1)
+
+    return results
+
+
+def main() -> None:
+
+    members: list[dict] = []
+
+    seen: set[tuple[str, str]] = set()
+
+    for house, url in LIST_PAGES:
+
+        collected = collect_members(
+            house,
+            url
+        )
+
+        for member in collected:
+
+            key = (
+                member["house"],
+                member["name"]
+            )
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            members.append(member)
+
+    print(
+        f"合計候補: {len(members)} 件"
+    )
+
+    if not members:
+
+        raise SystemExit(
+            "ERROR: 議員一覧を取得できませんでした。"
+        )
+
+    results = add_official_urls(
+        members
+    )
+
+    save_json(
+        OUT_FILE,
+        results
+    )
+
+    print(
+        f"完了: {OUT_FILE} に "
+        f"{len(results)} 件保存しました"
+    )
+
+
+if __name__ == "__main__":
+    main()
