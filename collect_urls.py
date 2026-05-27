@@ -90,7 +90,7 @@ def fetch(url: str) -> str | None:
             res = requests.get(
                 url,
                 headers=HEADERS,
-                timeout=20,
+                timeout=10,
             )
 
             res.raise_for_status()
@@ -251,6 +251,14 @@ def is_probable_person_name(
         "免責",
         "特権",
         "新緑風会",
+
+        # 除外
+        "沖縄の風",
+        "無所属クラブ",
+        "参議院議長",
+        "衆議院副議長",
+        "議長",
+        "副議長",
     ]
 
     for ng in ng_words:
@@ -549,42 +557,6 @@ def extract_official_url(
             ]:
                 break
 
-            for a in sibling.find_all(
-                "a",
-                href=True
-            ):
-
-                text = a.get_text(
-                    strip=True
-                ).lower()
-
-                href = a.get(
-                    "href",
-                    ""
-                )
-
-                if any(
-                    k in text
-                    for k in official_keywords
-                ):
-
-                    url = normalize_external_url(
-                        href,
-                        wiki_url
-                    )
-
-                    if url:
-                        return url
-
-        for sibling in heading.find_next_siblings():
-
-            if sibling.name in [
-                "h2",
-                "h3",
-                "h4",
-            ]:
-                break
-
             links = valid_links(sibling)
 
             if links:
@@ -645,18 +617,16 @@ def find_from_search(
     name: str
 ) -> str | None:
 
+    print(f"  -> 検索 fallback: {name}")
+
     queries = [
         f"{name} 公式サイト",
-        f"{name} オフィシャルサイト",
-        f"{name} ホームページ",
     ]
 
     for q in queries:
 
-        print(f"  -> 検索: {q}")
-
         url = (
-            "https://duckduckgo.com/html/?q="
+            "https://html.duckduckgo.com/html/?q="
             + quote_plus(q)
         )
 
@@ -720,7 +690,7 @@ def find_from_search(
                 )
             )
 
-        time.sleep(1)
+        time.sleep(0.5)
 
     return None
 
@@ -763,10 +733,6 @@ def add_official_urls(
 
         if not official:
 
-            print(
-                "  -> Wikipedia公式URLなし。検索します..."
-            )
-
             official = find_from_search(
                 name
             )
@@ -790,7 +756,7 @@ def add_official_urls(
                 f"  checkpoint: {len(results)} 件保存"
             )
 
-        time.sleep(0.25)
+        time.sleep(0.1)
 
     return results
 
