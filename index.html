@@ -17,7 +17,6 @@
   --blue:#2563eb;
   --green:#16a34a;
   --red:#dc2626;
-  --yellow:#ca8a04;
 }
 
 *{
@@ -139,6 +138,7 @@ th{
   top:0;
   z-index:1;
   border-bottom:1px solid var(--line);
+  cursor:pointer;
 }
 
 td{
@@ -337,9 +337,9 @@ GSサイトシール利用状況を自動調査したダッシュボードです
 
 <thead>
 <tr>
-  <th>院</th>
-  <th>政党</th>
-  <th>氏名</th>
+  <th id="sortHouse">院</th>
+  <th id="sortParty">政党</th>
+  <th id="sortName">氏名</th>
   <th>公式サイト</th>
   <th>HTTPS</th>
   <th>認証局</th>
@@ -365,6 +365,9 @@ GSサイトシール利用状況を自動調査したダッシュボードです
 <script>
 
 let allData = [];
+
+let currentSort = "party";
+let sortAsc = true;
 
 const badge = (v) => {
 
@@ -463,4 +466,279 @@ const renderPartyStats = (data) => {
       stats[party].ssl++;
     }
 
-   
+    if(row.gs_cert === true){
+      stats[party].gs++;
+    }
+  }
+
+  const html =
+    Object.entries(stats)
+      .sort((a,b)=>b[1].total-a[1].total)
+      .map(([party,s])=>{
+
+        const sslRate =
+          s.total
+            ? ((s.ssl/s.total)*100).toFixed(1)
+            : "0.0";
+
+        const gsShare =
+          s.ssl
+            ? ((s.gs/s.ssl)*100).toFixed(1)
+            : "0.0";
+
+        let cls = "";
+
+        if(gsShare >= 30){
+          cls = "rank1";
+        }else if(gsShare >= 20){
+          cls = "rank2";
+        }else{
+          cls = "rank3";
+        }
+
+        return `
+          <tr>
+            <td>${party}</td>
+            <td>${s.total}</td>
+            <td>${s.ssl}</td>
+            <td>${sslRate}%</td>
+            <td>${s.gs}</td>
+            <td class="${cls}">
+              ${gsShare}%
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+  document.getElementById("partyBody").innerHTML =
+    html;
+};
+
+const renderIssuerStats = (data) => {
+
+  const issuerMap = {};
+
+  const sslRows =
+    data.filter(x => x.https === true);
+
+  for(const row of sslRows){
+
+    const issuer =
+      row.issuer || "不明";
+
+    issuerMap[issuer] ??= 0;
+    issuerMap[issuer]++;
+  }
+
+  const html =
+    Object.entries(issuerMap)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([issuer,count])=>{
+
+        const share =
+          ((count / sslRows.length) * 100).toFixed(1);
+
+        return `
+          <tr>
+            <td>${issuer}</td>
+            <td>${count}</td>
+            <td>${share}%</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+  document.getElementById("issuerBody").innerHTML =
+    html;
+};
+
+const getFilteredData = () => {
+
+  const keyword =
+    document.getElementById("searchInput")
+      .value
+      .trim()
+      .toLowerCase();
+
+  const house =
+    document.getElementById("houseFilter").value;
+
+  const https =
+    document.getElementById("httpsFilter").value;
+
+  const gs =
+    document.getElementById("gsFilter").value;
+
+  const filtered = allData.filter(row => {
+
+    const text = [
+      row.house,
+      row.party,
+      row.name,
+      row.official,
+      row.issuer
+    ]
+    .join(" ")
+    .toLowerCase();
+
+    if(keyword && !text.includes(keyword)){
+      return false;
+    }
+
+    if(house && row.house !== house){
+      return false;
+    }
+
+    if(https && String(row.https) !== https){
+      return false;
+    }
+
+    if(gs && String(row.gs_cert) !== gs){
+      return false;
+    }
+
+    return true;
+  });
+
+  filtered.sort((a,b)=>{
+
+    const av =
+      String(a[currentSort] || "").toLowerCase();
+
+    const bv =
+      String(b[currentSort] || "").toLowerCase();
+
+    if(av < bv){
+      return sortAsc ? -1 : 1;
+    }
+
+    if(av > bv){
+      return sortAsc ? 1 : -1;
+    }
+
+    return 0;
+  });
+
+  return filtered;
+};
+
+const render = () => {
+
+  const data = getFilteredData();
+
+  updateSummary(data);
+
+  renderPartyStats(data);
+
+  renderIssuerStats(data);
+
+  const html = data.map(row => {
+
+    return `
+      <tr>
+        <td>${escapeHtml(row.house)}</td>
+        <td>${escapeHtml(row.party || "-")}</td>
+        <td>${escapeHtml(row.name)}</td>
+        <td>${link(row.official)}</td>
+        <td>${badge(row.https)}</td>
+        <td>${escapeHtml(row.issuer || "-")}</td>
+        <td>${badge(row.gs_cert)}</td>
+        <td>${badge(row.gs_seal)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  document.getElementById("tbody").innerHTML =
+    html;
+};
+
+const setupEvents = () => {
+
+  for(const id of [
+    "searchInput",
+    "houseFilter",
+    "httpsFilter",
+    "gsFilter"
+  ]){
+
+    document
+      .getElementById(id)
+      .addEventListener("input", render);
+
+    document
+      .getElementById(id)
+      .addEventListener("change", render);
+  }
+
+  document.getElementById("sortParty")
+    .addEventListener("click", ()=>{
+
+      if(currentSort === "party"){
+        sortAsc = !sortAsc;
+      }else{
+        currentSort = "party";
+        sortAsc = true;
+      }
+
+      render();
+  });
+
+  document.getElementById("sortName")
+    .addEventListener("click", ()=>{
+
+      if(currentSort === "name"){
+        sortAsc = !sortAsc;
+      }else{
+        currentSort = "name";
+        sortAsc = true;
+      }
+
+      render();
+  });
+
+  document.getElementById("sortHouse")
+    .addEventListener("click", ()=>{
+
+      if(currentSort === "house"){
+        sortAsc = !sortAsc;
+      }else{
+        currentSort = "house";
+        sortAsc = true;
+      }
+
+      render();
+  });
+};
+
+const main = async () => {
+
+  try{
+
+    const res =
+      await fetch("./data.json?ts=" + Date.now());
+
+    allData = await res.json();
+
+    setupEvents();
+
+    render();
+
+  }catch(error){
+
+    document.getElementById("tbody").innerHTML = `
+      <tr>
+        <td colspan="8">
+          ${escapeHtml(error.message)}
+        </td>
+      </tr>
+    `;
+  }
+};
+
+main();
+
+</script>
+
+</body>
+</html>
