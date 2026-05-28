@@ -835,3 +835,78 @@ main();
 
 </body>
 </html>
+const updateSummary = (data) => {
+
+  const total =
+    data.length;
+
+  const sslRows =
+    data.filter(
+      x =>
+        x.https === true
+        && x.official
+        && simplifyIssuer(x.issuer) !== "不明"
+    );
+
+  const sslCount =
+    sslRows.length;
+
+  const gsCount =
+    sslRows.filter(
+      x => isGlobalSign(x)
+    ).length;
+
+  const sealCount =
+    data.filter(
+      x => x.gs_seal === true
+    ).length;
+
+  const sslRate =
+    total
+      ? ((sslCount / total) * 100).toFixed(1)
+      : "0.0";
+
+  // ↓ 寄付4党のみ
+  const donationSsl =
+    sslRows.filter(
+      x =>
+        donationParties.includes(x.party)
+    );
+
+  const donationGs =
+    donationSsl.filter(
+      x => isGlobalSign(x)
+    );
+
+  const gsShare =
+    donationSsl.length
+      ? (
+          (donationGs.length / donationSsl.length)
+          * 100
+        ).toFixed(1)
+      : "0.0";
+
+  document.getElementById("total").textContent =
+    total;
+
+  document.getElementById("sslCount").textContent =
+    sslCount;
+
+  document.getElementById("sslRate").textContent =
+    `SSL利用率 ${sslRate}%`;
+
+  document.getElementById("gsCount").textContent =
+    gsCount;
+
+  document.getElementById("sealCount").textContent =
+    sealCount;
+
+  document.getElementById("donationSslCount").textContent =
+    donationSsl.length;
+
+  document.getElementById("donationGsCount").textContent =
+    donationGs.length;
+
+  document.getElementById("gsShare").textContent =
+    `${gsShare}%`;
+};
