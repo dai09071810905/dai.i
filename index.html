@@ -229,70 +229,19 @@ button:disabled{
   font-weight:800;
 }
 
-.party-自民{
-  background:#dbeafe;
-  color:#1d4ed8;
-}
-
-.party-国民{
-  background:#fef3c7;
-  color:#92400e;
-}
-
-.party-立憲{
-  background:#ede9fe;
-  color:#6d28d9;
-}
-
-.party-れ新{
-  background:#fee2e2;
-  color:#b91c1c;
-}
-
-.party-維新{
-  background:#dcfce7;
-  color:#15803d;
-}
-
-.party-公明{
-  background:#e0e7ff;
-  color:#3730a3;
-}
-
-.party-共産{
-  background:#ffe4e6;
-  color:#be123c;
-}
-
-.party-参政{
-  background:#ffedd5;
-  color:#c2410c;
-}
-
-.party-社民{
-  background:#fce7f3;
-  color:#be185d;
-}
-
-.party-保守{
-  background:#ede9fe;
-  color:#5b21b6;
-}
-
-.party-みらい{
-  background:#cffafe;
-  color:#155e75;
-}
-
-.party-無所属{
-  background:#e5e7eb;
-  color:#374151;
-}
-
-.party-不明{
-  background:#f3f4f6;
-  color:#6b7280;
-}
+.party-自民{ background:#dbeafe; color:#1d4ed8; }
+.party-国民{ background:#fef3c7; color:#92400e; }
+.party-立憲{ background:#ede9fe; color:#6d28d9; }
+.party-れ新{ background:#fee2e2; color:#b91c1c; }
+.party-維新{ background:#dcfce7; color:#15803d; }
+.party-公明{ background:#e0e7ff; color:#3730a3; }
+.party-共産{ background:#ffe4e6; color:#be123c; }
+.party-参政{ background:#ffedd5; color:#c2410c; }
+.party-社民{ background:#fce7f3; color:#be185d; }
+.party-保守{ background:#ede9fe; color:#5b21b6; }
+.party-みらい{ background:#cffafe; color:#155e75; }
+.party-無所属{ background:#e5e7eb; color:#374151; }
+.party-不明{ background:#f3f4f6; color:#6b7280; }
 
 .issuer-bar-wrap{
   width:140px;
@@ -304,11 +253,12 @@ button:disabled{
 
 .issuer-bar{
   height:100%;
-  background:linear-gradient(
-    90deg,
-    #60a5fa,
-    #2563eb
-  );
+  background:
+    linear-gradient(
+      90deg,
+      #60a5fa,
+      #2563eb
+    );
 }
 
 </style>
@@ -321,11 +271,8 @@ button:disabled{
 <h1>国会議員 SSL / GlobalSign 調査</h1>
 
 <div class="description">
-国会議員公式サイトのHTTPS利用状況、
-認証局、
-GlobalSign証明書、
-GSサイトシール利用状況を
-自動調査したダッシュボードです。
+国会議員公式サイトのHTTPS利用状況、認証局、GlobalSign証明書、
+GSサイトシール利用状況を自動調査したダッシュボードです。
 </div>
 
 <div class="summary">
@@ -344,11 +291,17 @@ GSサイトシール利用状況を
   <div class="card">
     <div class="card-label">GlobalSign利用数</div>
     <div class="card-value" id="gsCount">-</div>
+    <div class="card-sub">
+      HTTPS利用サイト全体母数
+    </div>
   </div>
 
   <div class="card">
-    <div class="card-label">GlobalSignシェア</div>
+    <div class="card-label">主要4党 GSシェア</div>
     <div class="card-value" id="gsShare">-</div>
+    <div class="card-sub">
+      対象母数：自民・国民・立憲・れ新 のSSL利用サイト内シェア
+    </div>
   </div>
 
   <div class="card">
@@ -362,10 +315,13 @@ GSサイトシール利用状況を
 
 <h2>認証局 シェア</h2>
 
+<div class="description">
+HTTPS利用サイト全体を母数として、各認証局のシェアを集計しています。
+</div>
+
 <div class="table-wrap">
 
 <table>
-
 <thead>
 <tr>
 <th>認証局</th>
@@ -376,7 +332,6 @@ GSサイトシール利用状況を
 </thead>
 
 <tbody id="issuerBody"></tbody>
-
 </table>
 
 </div>
@@ -414,21 +369,18 @@ GSサイトシール利用状況を
 <div class="table-wrap">
 
 <table>
-
 <thead>
 <tr>
 <th>院</th>
 <th>政党</th>
 <th>氏名</th>
 <th>公式サイト</th>
-<th>HTTPS</th>
 <th>CA</th>
 <th>シール有無</th>
 </tr>
 </thead>
 
 <tbody id="tbody"></tbody>
-
 </table>
 
 </div>
@@ -468,7 +420,6 @@ const escapeHtml = (str) => {
 const badge = (v) => {
 
   if(v === true){
-
     return `
       <span class="badge yes">
         あり
@@ -526,29 +477,50 @@ const simplifyIssuer = (issuer) => {
 
 const updateSummary = (data) => {
 
-  const total = data.length;
+  const total =
+    data.length;
 
   const sslRows =
     data.filter(x => x.https === true);
 
-  const sslCount = sslRows.length;
+  const sslCount =
+    sslRows.length;
 
   const gsCount =
-    data.filter(
+    sslRows.filter(
       x => simplifyIssuer(x.issuer) === "GlobalSign"
     ).length;
 
   const sealCount =
-    data.filter(x => x.gs_seal === true).length;
+    data.filter(
+      x => x.gs_seal === true
+    ).length;
 
   const sslRate =
     total
       ? ((sslCount / total) * 100).toFixed(1)
       : "0.0";
 
+  const targetParties = [
+    "自民",
+    "国民",
+    "立憲",
+    "れ新"
+  ];
+
+  const targetSsl =
+    sslRows.filter(
+      x => targetParties.includes(x.party)
+    );
+
+  const targetGs =
+    targetSsl.filter(
+      x => simplifyIssuer(x.issuer) === "GlobalSign"
+    );
+
   const gsShare =
-    sslCount
-      ? ((gsCount / sslCount) * 100).toFixed(1)
+    targetSsl.length
+      ? ((targetGs.length / targetSsl.length) * 100).toFixed(1)
       : "0.0";
 
   document.getElementById("total").textContent =
@@ -583,7 +555,6 @@ const renderIssuerStats = (data) => {
       simplifyIssuer(row.issuer);
 
     issuerMap[issuer] ??= 0;
-
     issuerMap[issuer]++;
   }
 
@@ -592,12 +563,9 @@ const renderIssuerStats = (data) => {
   for(const [issuer,count] of Object.entries(issuerMap)){
 
     if(count <= 1){
-
       groupedMap["その他"] ??= 0;
       groupedMap["その他"] += count;
-
     }else{
-
       groupedMap[issuer] = count;
     }
   }
@@ -696,8 +664,6 @@ const renderTable = (data) => {
 
           <td>${link(row.official)}</td>
 
-          <td>${badge(row.https)}</td>
-
           <td>
             ${escapeHtml(
               simplifyIssuer(row.issuer)
@@ -739,19 +705,23 @@ const getFilteredData = () => {
     const text = [
       row.name,
       row.party,
-      row.official
+      row.official,
+      row.issuer
     ]
       .join(" ")
       .toLowerCase();
 
-    if(keyword && !text.includes(keyword))
+    if(keyword && !text.includes(keyword)){
       return false;
+    }
 
-    if(house && row.house !== house)
+    if(house && row.house !== house){
       return false;
+    }
 
-    if(seal && String(row.gs_seal) !== seal)
+    if(seal && String(row.gs_seal) !== seal){
       return false;
+    }
 
     return true;
   });
@@ -775,7 +745,6 @@ const reloadData = async () => {
     document.getElementById("reloadBtn");
 
   btn.disabled = true;
-
   btn.textContent = "更新中...";
 
   try{
@@ -785,14 +754,14 @@ const reloadData = async () => {
         "./data.json?ts=" + Date.now()
       );
 
-    allData = await res.json();
+    allData =
+      await res.json();
 
     render();
 
   }finally{
 
     btn.disabled = false;
-
     btn.textContent = "更新";
   }
 };
