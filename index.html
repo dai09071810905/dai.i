@@ -317,6 +317,7 @@ GSサイトシール利用状況を自動調査したダッシュボードです
 
 <div class="description">
 HTTPS利用サイト全体を母数として、各認証局のシェアを集計しています。
+件数2以下の認証局は「その他」にまとめています。
 </div>
 
 <div class="table-wrap">
@@ -340,6 +341,34 @@ HTTPS利用サイト全体を母数として、各認証局のシェアを集計
 
 <div class="section">
 
+<h2>政党別 GSシェア</h2>
+
+<div class="description">
+各政党のHTTPS利用サイトを母数として、GlobalSign利用率を集計しています。
+</div>
+
+<div class="table-wrap">
+
+<table>
+<thead>
+<tr>
+<th>政党</th>
+<th>議員数</th>
+<th>SSL利用数</th>
+<th>GlobalSign数</th>
+<th>GSシェア</th>
+</tr>
+</thead>
+
+<tbody id="partyGsBody"></tbody>
+</table>
+
+</div>
+
+</div>
+
+<div class="section">
+
 <h2>議員一覧</h2>
 
 <div class="controls">
@@ -347,7 +376,7 @@ HTTPS利用サイト全体を母数として、各認証局のシェアを集計
 <input
   id="searchInput"
   type="text"
-  placeholder="名前・政党・URL検索"
+  placeholder="名前・政党・URL・CA検索"
 />
 
 <select id="houseFilter">
@@ -562,7 +591,7 @@ const renderIssuerStats = (data) => {
 
   for(const [issuer,count] of Object.entries(issuerMap)){
 
-    if(count <= 1){
+    if(count <= 2){
       groupedMap["その他"] ??= 0;
       groupedMap["その他"] += count;
     }else{
@@ -614,6 +643,91 @@ const renderIssuerStats = (data) => {
       .join("");
 
   document.getElementById("issuerBody").innerHTML =
+    html;
+};
+
+const renderPartyGsStats = (data) => {
+
+  const partyMap = {};
+
+  for(const row of data){
+
+    const party =
+      row.party || "不明";
+
+    partyMap[party] ??= {
+      total: 0,
+      ssl: 0,
+      gs: 0
+    };
+
+    partyMap[party].total++;
+
+    if(row.https === true){
+
+      partyMap[party].ssl++;
+
+      if(
+        simplifyIssuer(row.issuer)
+        === "GlobalSign"
+      ){
+        partyMap[party].gs++;
+      }
+    }
+  }
+
+  const html =
+    Object.entries(partyMap)
+
+      .sort((a,b) => {
+
+        const pa =
+          partyOrder[a[0]] || 999;
+
+        const pb =
+          partyOrder[b[0]] || 999;
+
+        return pa - pb;
+      })
+
+      .map(([party,stats]) => {
+
+        const share =
+          stats.ssl
+            ? ((stats.gs / stats.ssl) * 100).toFixed(1)
+            : "0.0";
+
+        return `
+          <tr>
+
+            <td>
+              <span class="
+                party-badge
+                party-${escapeHtml(party)}
+              ">
+                ${escapeHtml(party)}
+              </span>
+            </td>
+
+            <td>${stats.total}</td>
+
+            <td>${stats.ssl}</td>
+
+            <td>${stats.gs}</td>
+
+            <td>
+              <strong>
+                ${share}%
+              </strong>
+            </td>
+
+          </tr>
+        `;
+      })
+
+      .join("");
+
+  document.getElementById("partyGsBody").innerHTML =
     html;
 };
 
@@ -735,6 +849,8 @@ const render = () => {
   updateSummary(data);
 
   renderIssuerStats(data);
+
+  renderPartyGsStats(data);
 
   renderTable(data);
 };
