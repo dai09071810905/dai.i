@@ -48,7 +48,6 @@ h1{
   font-size:38px;
   margin-bottom:8px;
   font-weight:900;
-  letter-spacing:-0.02em;
 }
 
 .description{
@@ -86,7 +85,6 @@ h1{
   font-size:42px;
   font-weight:900;
   margin-top:12px;
-  letter-spacing:-0.03em;
 }
 
 .card-sub{
@@ -313,11 +311,6 @@ button:disabled{
   );
 }
 
-.small{
-  color:#6b7280;
-  font-size:12px;
-}
-
 </style>
 </head>
 
@@ -349,16 +342,13 @@ GSサイトシール利用状況を
   </div>
 
   <div class="card">
-    <div class="card-label">GS利用数</div>
+    <div class="card-label">GlobalSign利用数</div>
     <div class="card-value" id="gsCount">-</div>
   </div>
 
   <div class="card">
-    <div class="card-label">GSシェア</div>
+    <div class="card-label">GlobalSignシェア</div>
     <div class="card-value" id="gsShare">-</div>
-    <div class="card-sub">
-      自民・国民・立憲・れ新のSSL利用サイト内シェア
-    </div>
   </div>
 
   <div class="card">
@@ -411,10 +401,10 @@ GSサイトシール利用状況を
 <option value="参議院">参議院</option>
 </select>
 
-<select id="gsFilter">
-<option value="">GSシールすべて</option>
-<option value="true">GSシールあり</option>
-<option value="false">GSシールなし</option>
+<select id="sealFilter">
+<option value="">シールすべて</option>
+<option value="true">シールあり</option>
+<option value="false">シールなし</option>
 </select>
 
 <button id="reloadBtn">更新</button>
@@ -432,8 +422,8 @@ GSサイトシール利用状況を
 <th>氏名</th>
 <th>公式サイト</th>
 <th>HTTPS</th>
-<th>認証局</th>
-<th>GSシール</th>
+<th>CA</th>
+<th>シール有無</th>
 </tr>
 </thead>
 
@@ -544,7 +534,9 @@ const updateSummary = (data) => {
   const sslCount = sslRows.length;
 
   const gsCount =
-    data.filter(x => x.gs_cert === true).length;
+    data.filter(
+      x => simplifyIssuer(x.issuer) === "GlobalSign"
+    ).length;
 
   const sealCount =
     data.filter(x => x.gs_seal === true).length;
@@ -554,26 +546,9 @@ const updateSummary = (data) => {
       ? ((sslCount / total) * 100).toFixed(1)
       : "0.0";
 
-  const targetParties = [
-    "自民",
-    "国民",
-    "立憲",
-    "れ新"
-  ];
-
-  const targetSsl =
-    sslRows.filter(
-      x => targetParties.includes(x.party)
-    );
-
-  const targetGs =
-    targetSsl.filter(
-      x => x.gs_cert === true
-    );
-
   const gsShare =
-    targetSsl.length
-      ? ((targetGs.length / targetSsl.length) * 100).toFixed(1)
+    sslCount
+      ? ((gsCount / sslCount) * 100).toFixed(1)
       : "0.0";
 
   document.getElementById("total").textContent =
@@ -646,6 +621,7 @@ const renderIssuerStats = (data) => {
 
         return `
           <tr>
+
             <td class="${cls}">
               ${escapeHtml(issuer)}
             </td>
@@ -753,9 +729,9 @@ const getFilteredData = () => {
       .getElementById("houseFilter")
       .value;
 
-  const gs =
+  const seal =
     document
-      .getElementById("gsFilter")
+      .getElementById("sealFilter")
       .value;
 
   return allData.filter(row => {
@@ -774,7 +750,7 @@ const getFilteredData = () => {
     if(house && row.house !== house)
       return false;
 
-    if(gs && String(row.gs_seal) !== gs)
+    if(seal && String(row.gs_seal) !== seal)
       return false;
 
     return true;
@@ -826,7 +802,7 @@ const setupEvents = () => {
   for(const id of [
     "searchInput",
     "houseFilter",
-    "gsFilter"
+    "sealFilter"
   ]){
 
     document
