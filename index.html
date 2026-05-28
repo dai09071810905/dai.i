@@ -9,9 +9,9 @@
 <style>
 
 :root{
-  --bg:#f4f7fb;
+  --bg:#eef4fb;
   --card:#ffffff;
-  --line:#e5e7eb;
+  --line:#dbe4ee;
   --text:#111827;
   --sub:#6b7280;
   --blue:#2563eb;
@@ -24,7 +24,12 @@
 body{
   margin:0;
   padding:24px;
-  background:var(--bg);
+  background:
+    linear-gradient(
+      180deg,
+      #eef5ff 0%,
+      #f7f9fc 100%
+    );
   color:var(--text);
   font-family:
     system-ui,
@@ -40,14 +45,17 @@ body{
 }
 
 h1{
-  font-size:34px;
+  font-size:38px;
   margin-bottom:8px;
+  font-weight:900;
+  letter-spacing:-0.02em;
 }
 
 .description{
   color:var(--sub);
-  line-height:1.8;
-  margin-bottom:30px;
+  line-height:1.9;
+  margin-bottom:34px;
+  font-size:15px;
 }
 
 .summary{
@@ -55,52 +63,56 @@ h1{
   grid-template-columns:
     repeat(auto-fit,minmax(220px,1fr));
   gap:18px;
-  margin-bottom:40px;
+  margin-bottom:44px;
 }
 
 .card{
   background:#fff;
-  border-radius:20px;
-  padding:22px;
+  border-radius:24px;
+  padding:24px;
+  border-top:6px solid var(--blue);
   box-shadow:
-    0 1px 3px rgba(0,0,0,0.05),
-    0 10px 25px rgba(0,0,0,0.03);
+    0 2px 8px rgba(0,0,0,0.04),
+    0 20px 40px rgba(0,0,0,0.04);
 }
 
 .card-label{
   color:var(--sub);
   font-size:13px;
+  font-weight:700;
 }
 
 .card-value{
-  font-size:36px;
-  font-weight:800;
-  margin-top:10px;
+  font-size:42px;
+  font-weight:900;
+  margin-top:12px;
+  letter-spacing:-0.03em;
 }
 
 .card-sub{
-  margin-top:8px;
+  margin-top:10px;
   font-size:13px;
   color:var(--sub);
-  line-height:1.5;
+  line-height:1.6;
 }
 
 .section{
-  margin-top:40px;
+  margin-top:48px;
 }
 
 .section h2{
   margin-bottom:16px;
-  font-size:24px;
+  font-size:26px;
+  font-weight:900;
 }
 
 .table-wrap{
   overflow:auto;
-  border-radius:20px;
+  border-radius:24px;
   background:#fff;
   box-shadow:
-    0 1px 3px rgba(0,0,0,0.05),
-    0 10px 25px rgba(0,0,0,0.03);
+    0 2px 8px rgba(0,0,0,0.04),
+    0 20px 40px rgba(0,0,0,0.04);
 }
 
 table{
@@ -109,34 +121,49 @@ table{
 }
 
 th{
-  background:#f9fafb;
-  padding:14px;
+  position:sticky;
+  top:0;
+  background:#f8fafc;
+  padding:15px;
   text-align:left;
   font-size:13px;
+  font-weight:800;
   border-bottom:1px solid var(--line);
+  white-space:nowrap;
 }
 
 td{
-  padding:13px 14px;
-  border-bottom:1px solid #f1f1f1;
+  padding:14px 15px;
+  border-bottom:1px solid #eef2f7;
   font-size:14px;
 }
 
+tr:nth-child(even){
+  background:#fbfdff;
+}
+
 tr:hover{
-  background:#fafcff;
+  background:#edf5ff;
 }
 
 a{
   color:var(--blue);
   text-decoration:none;
+  font-weight:600;
+}
+
+a:hover{
+  text-decoration:underline;
 }
 
 .badge{
   display:inline-flex;
+  align-items:center;
+  justify-content:center;
   border-radius:999px;
-  padding:4px 10px;
+  padding:5px 11px;
   font-size:12px;
-  font-weight:700;
+  font-weight:800;
 }
 
 .yes{
@@ -151,22 +178,23 @@ a{
 
 .highlight{
   color:var(--blue);
-  font-weight:800;
+  font-weight:900;
 }
 
 .controls{
   display:flex;
   gap:12px;
   flex-wrap:wrap;
-  margin-bottom:18px;
+  margin-bottom:20px;
 }
 
 input,
 select{
   border:1px solid var(--line);
-  border-radius:12px;
-  padding:10px 14px;
+  border-radius:14px;
+  padding:11px 14px;
   background:#fff;
+  font-size:14px;
 }
 
 input{
@@ -175,21 +203,119 @@ input{
 
 button{
   border:none;
-  border-radius:12px;
-  padding:10px 18px;
+  border-radius:14px;
+  padding:11px 20px;
   background:var(--blue);
   color:#fff;
-  font-weight:700;
+  font-weight:800;
   cursor:pointer;
+  transition:0.2s;
 }
 
 button:hover{
-  opacity:0.9;
+  opacity:0.92;
+  transform:translateY(-1px);
 }
 
 button:disabled{
   opacity:0.5;
   cursor:not-allowed;
+}
+
+.party-badge{
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  padding:5px 10px;
+  font-size:12px;
+  font-weight:800;
+}
+
+.party-自民{
+  background:#dbeafe;
+  color:#1d4ed8;
+}
+
+.party-国民{
+  background:#fef3c7;
+  color:#92400e;
+}
+
+.party-立憲{
+  background:#ede9fe;
+  color:#6d28d9;
+}
+
+.party-れ新{
+  background:#fee2e2;
+  color:#b91c1c;
+}
+
+.party-維新{
+  background:#dcfce7;
+  color:#15803d;
+}
+
+.party-公明{
+  background:#e0e7ff;
+  color:#3730a3;
+}
+
+.party-共産{
+  background:#ffe4e6;
+  color:#be123c;
+}
+
+.party-参政{
+  background:#ffedd5;
+  color:#c2410c;
+}
+
+.party-社民{
+  background:#fce7f3;
+  color:#be185d;
+}
+
+.party-保守{
+  background:#ede9fe;
+  color:#5b21b6;
+}
+
+.party-みらい{
+  background:#cffafe;
+  color:#155e75;
+}
+
+.party-無所属{
+  background:#e5e7eb;
+  color:#374151;
+}
+
+.party-不明{
+  background:#f3f4f6;
+  color:#6b7280;
+}
+
+.issuer-bar-wrap{
+  width:140px;
+  height:8px;
+  background:#e5e7eb;
+  border-radius:999px;
+  overflow:hidden;
+}
+
+.issuer-bar{
+  height:100%;
+  background:linear-gradient(
+    90deg,
+    #60a5fa,
+    #2563eb
+  );
+}
+
+.small{
+  color:#6b7280;
+  font-size:12px;
 }
 
 </style>
@@ -244,34 +370,6 @@ GSサイトシール利用状況を
 
 <div class="section">
 
-<h2>政党別 シェア</h2>
-
-<div class="table-wrap">
-
-<table>
-
-<thead>
-<tr>
-<th>政党</th>
-<th>母数</th>
-<th>SSL利用数</th>
-<th>SSL利用率</th>
-<th>GS利用数</th>
-<th>GSシェア</th>
-<th>GSサイトシール</th>
-</tr>
-</thead>
-
-<tbody id="partyBody"></tbody>
-
-</table>
-
-</div>
-
-</div>
-
-<div class="section">
-
 <h2>認証局 シェア</h2>
 
 <div class="table-wrap">
@@ -283,6 +381,7 @@ GSサイトシール利用状況を
 <th>認証局</th>
 <th>件数</th>
 <th>シェア</th>
+<th>割合</th>
 </tr>
 </thead>
 
@@ -368,87 +467,12 @@ const partyOrder = {
   "不明": 999
 };
 
-const ldpPriorityNames = [
-  "石破茂",
-  "高市早苗",
-  "林芳正",
-  "小泉進次郎",
-  "加藤勝信",
-  "麻生太郎",
-  "菅義偉",
-  "岸田文雄",
-  "茂木敏充",
-  "河野太郎",
-  "西村康稔",
-  "世耕弘成",
-  "稲田朋美",
-  "上川陽子",
-  "野田聖子",
-  "鈴木俊一",
-  "甘利明",
-  "萩生田光一",
-  "森山裕",
-  "小野寺五典",
-];
+const escapeHtml = (str) => {
 
-const getLdpPriority = (row) => {
-
-  if(row.party !== "自民"){
-    return 9999;
-  }
-
-  const index =
-    ldpPriorityNames.indexOf(row.name);
-
-  if(index >= 0){
-    return index;
-  }
-
-  return 5000;
-};
-
-const sortMembers = (data) => {
-
-  return [...data].sort((a,b) => {
-
-    const partyA =
-      partyOrder[a.party] || 999;
-
-    const partyB =
-      partyOrder[b.party] || 999;
-
-    if(partyA !== partyB){
-      return partyA - partyB;
-    }
-
-    const pa = getLdpPriority(a);
-    const pb = getLdpPriority(b);
-
-    if(pa !== pb){
-      return pa - pb;
-    }
-
-    const houseOrder = {
-      "衆議院": 1,
-      "参議院": 2
-    };
-
-    const ha =
-      houseOrder[a.house] || 9;
-
-    const hb =
-      houseOrder[b.house] || 9;
-
-    if(ha !== hb){
-      return ha - hb;
-    }
-
-    return String(a.name || "")
-      .localeCompare(
-        String(b.name || ""),
-        "ja"
-      );
-  });
+  return String(str ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;");
 };
 
 const badge = (v) => {
@@ -467,14 +491,6 @@ const badge = (v) => {
       なし
     </span>
   `;
-};
-
-const escapeHtml = (str) => {
-
-  return String(str ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;");
 };
 
 const link = (url) => {
@@ -523,22 +539,15 @@ const updateSummary = (data) => {
   const total = data.length;
 
   const sslRows =
-    data.filter(
-      x => x.https === true
-    );
+    data.filter(x => x.https === true);
 
-  const sslCount =
-    sslRows.length;
+  const sslCount = sslRows.length;
 
   const gsCount =
-    data.filter(
-      x => x.gs_cert === true
-    ).length;
+    data.filter(x => x.gs_cert === true).length;
 
   const sealCount =
-    data.filter(
-      x => x.gs_seal === true
-    ).length;
+    data.filter(x => x.gs_seal === true).length;
 
   const sslRate =
     total
@@ -574,7 +583,7 @@ const updateSummary = (data) => {
     sslCount;
 
   document.getElementById("sslRate").textContent =
-    `全議員母数：${sslRate}%`;
+    `SSL利用率 ${sslRate}%`;
 
   document.getElementById("gsCount").textContent =
     gsCount;
@@ -591,9 +600,7 @@ const renderIssuerStats = (data) => {
   const issuerMap = {};
 
   const sslRows =
-    data.filter(
-      x => x.https === true
-    );
+    data.filter(x => x.https === true);
 
   for(const row of sslRows){
 
@@ -612,7 +619,6 @@ const renderIssuerStats = (data) => {
     if(count <= 1){
 
       groupedMap["その他"] ??= 0;
-
       groupedMap["その他"] += count;
 
     }else{
@@ -643,8 +649,20 @@ const renderIssuerStats = (data) => {
             <td class="${cls}">
               ${escapeHtml(issuer)}
             </td>
+
             <td>${count}</td>
+
             <td>${share}%</td>
+
+            <td>
+              <div class="issuer-bar-wrap">
+                <div
+                  class="issuer-bar"
+                  style="width:${share}%"
+                ></div>
+              </div>
+            </td>
+
           </tr>
         `;
       })
@@ -658,20 +676,60 @@ const renderIssuerStats = (data) => {
 const renderTable = (data) => {
 
   const sortedData =
-    sortMembers(data);
+    [...data].sort((a,b) => {
+
+      const pa =
+        partyOrder[a.party] || 999;
+
+      const pb =
+        partyOrder[b.party] || 999;
+
+      if(pa !== pb){
+        return pa - pb;
+      }
+
+      return String(a.name || "")
+        .localeCompare(
+          String(b.name || ""),
+          "ja"
+        );
+    });
 
   const html =
     sortedData.map(row => {
 
       return `
         <tr>
+
           <td>${escapeHtml(row.house)}</td>
-          <td>${escapeHtml(row.party || "-")}</td>
-          <td>${escapeHtml(row.name)}</td>
+
+          <td>
+            <span class="
+              party-badge
+              party-${escapeHtml(row.party || "不明")}
+            ">
+              ${escapeHtml(row.party || "-")}
+            </span>
+          </td>
+
+          <td>
+            <strong>
+              ${escapeHtml(row.name)}
+            </strong>
+          </td>
+
           <td>${link(row.official)}</td>
+
           <td>${badge(row.https)}</td>
-          <td>${escapeHtml(simplifyIssuer(row.issuer))}</td>
+
+          <td>
+            ${escapeHtml(
+              simplifyIssuer(row.issuer)
+            )}
+          </td>
+
           <td>${badge(row.gs_seal)}</td>
+
         </tr>
       `;
     })
