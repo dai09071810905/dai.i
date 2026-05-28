@@ -364,6 +364,7 @@ const partyOrder = {
   "社民": 9,
   "保守": 10,
   "みらい": 11,
+  "無所属": 12,
   "不明": 999
 };
 
@@ -690,8 +691,25 @@ const renderIssuerStats = (data) => {
     issuerMap[issuer]++;
   }
 
+  // 件数1はその他へ
+  const groupedMap = {};
+
+  for(const [issuer,count] of Object.entries(issuerMap)){
+
+    if(count <= 1){
+
+      groupedMap["その他"] ??= 0;
+
+      groupedMap["その他"] += count;
+
+    }else{
+
+      groupedMap[issuer] = count;
+    }
+  }
+
   const html =
-    Object.entries(issuerMap)
+    Object.entries(groupedMap)
 
       .sort((a,b)=>b[1]-a[1])
 
