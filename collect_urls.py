@@ -164,6 +164,33 @@ def normalize_party(value) -> str:
     )
 
 
+def normalize_manual_url(url: str) -> str | None:
+
+    url = clean_text(url)
+
+    if not url:
+        return None
+
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+
+    parsed = urlparse(url)
+
+    if not parsed.netloc:
+        return None
+
+    return urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path or "/",
+            "",
+            "",
+            "",
+        )
+    )
+
+
 def load_members() -> list[dict]:
 
     if not MEMBER_FILE.exists():
@@ -202,6 +229,11 @@ def load_members() -> list[dict]:
             if len(row) > 2 else ""
         )
 
+        manual_url = normalize_manual_url(
+            row.iloc[3]
+            if len(row) > 3 else ""
+        )
+
         if not house or not name:
             continue
 
@@ -220,6 +252,7 @@ def load_members() -> list[dict]:
                 "house": house,
                 "party": party,
                 "name": name,
+                "manual_url": manual_url,
                 "wiki": None,
                 "official": None,
             }
@@ -380,28 +413,6 @@ def find_wikipedia_page(
     return None
 
 
-def find_section_heading(
-    soup: BeautifulSoup,
-    keywords: list[str]
-):
-
-    for tag in soup.find_all(
-        ["h2", "h3", "h4"]
-    ):
-
-        text = tag.get_text(
-            strip=True
-        )
-
-        if any(
-            kw in text
-            for kw in keywords
-        ):
-            return tag
-
-    return None
-
-
 def extract_official_url(
     wiki_html: str,
     wiki_url: str
@@ -411,28 +422,6 @@ def extract_official_url(
         wiki_html,
         "html.parser"
     )
-
-    def valid_links(parent):
-
-        if not parent:
-            return []
-
-        links = []
-
-        for a in parent.find_all(
-            "a",
-            href=True
-        ):
-
-            url = normalize_external_url(
-                a["href"],
-                wiki_url
-            )
-
-            if url:
-                links.append(url)
-
-        return links
 
     official_keywords = [
         "公式",
@@ -449,61 +438,28 @@ def extract_official_url(
 
         for row in table.find_all("tr"):
 
-            label_cell = row.find(
-                ["th", "td"]
-            )
-
-            if not label_cell:
-                continue
-
-            label = label_cell.get_text(
+            text = row.get_text(
                 " ",
                 strip=True
             ).lower()
 
             if any(
-                k in label
+                k in text
                 for k in official_keywords
             ):
 
-                links = valid_links(row)
+                for a in row.find_all(
+                    "a",
+                    href=True
+                ):
 
-                if links:
-                    return links[0]
+                    url = normalize_external_url(
+                        a["href"],
+                        wiki_url
+                    )
 
-    heading = find_section_heading(
-        soup,
-        [
-            "外部リンク",
-            "External links",
-            "外部リンク一覧",
-        ],
-    )
-
-    if heading:
-
-        for sibling in heading.find_next_siblings():
-
-            if sibling.name in [
-                "h2",
-                "h3",
-                "h4",
-            ]:
-                break
-
-            links = valid_links(sibling)
-
-            if links:
-                return links[0]
-
-    for table in soup.select(
-        "table[class*='infobox']"
-    ):
-
-        links = valid_links(table)
-
-        if links:
-            return links[0]
+                    if url:
+                        return url
 
     return None
 
@@ -587,39 +543,7 @@ def find_from_search(
         if not candidate:
             continue
 
-        parsed = urlparse(candidate)
-
-        host = (
-            parsed.netloc or ""
-        ).lower()
-
-        if any(
-            skip in host
-            for skip in SKIP_DOMAINS
-        ):
-            continue
-
-        if not host.endswith(
-            (
-                ".jp",
-                ".com",
-                ".net",
-                ".org",
-                ".tokyo",
-            )
-        ):
-            continue
-
-        return urlunparse(
-            (
-                parsed.scheme,
-                parsed.netloc,
-                parsed.path or "/",
-                "",
-                "",
-                "",
-            )
-        )
+        return candidate
 
     return None
 
@@ -641,11 +565,28 @@ def add_official_urls(
             f"[{i}/{len(members)}] {name}"
         )
 
-        official = MANUAL_OFFICIAL_URLS.get(name)
+        official = None
 
-        wiki_url = None
+        # 1. Excel D列優先
+        if member.get("manual_url"):
 
-        if not official:
+            official = member["manual_url"]
+
+            print(
+                "  -> Excel D列URL使用"
+            )
+
+        # 2. 手動定義
+        elif name in MANUAL_OFFICIAL_URLS:
+
+            official = MANUAL_OFFICIAL_URLS[name]
+
+            print(
+                "  -> MANUAL_OFFICIAL_URLS使用"
+            )
+
+        # 3. Wikipedia
+        else:
 
             wiki_url = find_wikipedia_page(name)
 
@@ -665,6 +606,7 @@ def add_official_urls(
                         wiki_url
                     )
 
+        # 4. 検索 fallback
         if not official:
 
             official = find_from_search(name)
