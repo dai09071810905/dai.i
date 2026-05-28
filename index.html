@@ -313,9 +313,9 @@ GSサイトシール利用状況を
 </select>
 
 <select id="gsFilter">
-<option value="">GSすべて</option>
-<option value="true">GSあり</option>
-<option value="false">GSなし</option>
+<option value="">GSシールすべて</option>
+<option value="true">GSシールあり</option>
+<option value="false">GSシールなし</option>
 </select>
 
 <button id="reloadBtn">更新</button>
@@ -334,7 +334,7 @@ GSサイトシール利用状況を
 <th>公式サイト</th>
 <th>HTTPS</th>
 <th>認証局</th>
-<th>GS</th>
+<th>GSシール</th>
 </tr>
 </thead>
 
@@ -369,7 +369,6 @@ const partyOrder = {
 };
 
 const ldpPriorityNames = [
-
   "石破茂",
   "高市早苗",
   "林芳正",
@@ -390,7 +389,6 @@ const ldpPriorityNames = [
   "萩生田光一",
   "森山裕",
   "小野寺五典",
-
 ];
 
 const getLdpPriority = (row) => {
@@ -588,90 +586,6 @@ const updateSummary = (data) => {
     sealCount;
 };
 
-const renderPartyStats = (data) => {
-
-  const partyMap = {};
-
-  for(const row of data){
-
-    const party =
-      row.party || "不明";
-
-    if(!partyMap[party]){
-
-      partyMap[party] = {
-        total:0,
-        ssl:0,
-        gs:0,
-        seal:0
-      };
-    }
-
-    partyMap[party].total++;
-
-    if(row.https === true)
-      partyMap[party].ssl++;
-
-    if(row.gs_cert === true)
-      partyMap[party].gs++;
-
-    if(row.gs_seal === true)
-      partyMap[party].seal++;
-  }
-
-  const html =
-    Object.entries(partyMap)
-
-      .sort((a,b) => {
-
-        const pa =
-          partyOrder[a[0]] || 999;
-
-        const pb =
-          partyOrder[b[0]] || 999;
-
-        return pa - pb;
-      })
-
-      .map(([party,s]) => {
-
-        const sslRate =
-          s.total
-            ? ((s.ssl / s.total) * 100).toFixed(1)
-            : "0.0";
-
-        const gsShare =
-          s.ssl
-            ? ((s.gs / s.ssl) * 100).toFixed(1)
-            : "0.0";
-
-        const cls =
-          ["自民","国民","立憲","れ新"]
-            .includes(party)
-              ? "highlight"
-              : "";
-
-        return `
-          <tr>
-            <td class="${cls}">
-              ${escapeHtml(party)}
-            </td>
-            <td>${s.total}</td>
-            <td>${s.ssl}</td>
-            <td>${sslRate}%</td>
-            <td>${s.gs}</td>
-            <td>${gsShare}%</td>
-            <td>${s.seal}</td>
-          </tr>
-        `;
-      })
-
-      .join("");
-
-  document.getElementById("partyBody").innerHTML =
-    html;
-};
-
 const renderIssuerStats = (data) => {
 
   const issuerMap = {};
@@ -691,7 +605,6 @@ const renderIssuerStats = (data) => {
     issuerMap[issuer]++;
   }
 
-  // 件数1はその他へ
   const groupedMap = {};
 
   for(const [issuer,count] of Object.entries(issuerMap)){
@@ -758,7 +671,7 @@ const renderTable = (data) => {
           <td>${link(row.official)}</td>
           <td>${badge(row.https)}</td>
           <td>${escapeHtml(simplifyIssuer(row.issuer))}</td>
-          <td>${badge(row.gs_cert)}</td>
+          <td>${badge(row.gs_seal)}</td>
         </tr>
       `;
     })
@@ -803,7 +716,7 @@ const getFilteredData = () => {
     if(house && row.house !== house)
       return false;
 
-    if(gs && String(row.gs_cert) !== gs)
+    if(gs && String(row.gs_seal) !== gs)
       return false;
 
     return true;
@@ -816,8 +729,6 @@ const render = () => {
     getFilteredData();
 
   updateSummary(data);
-
-  renderPartyStats(data);
 
   renderIssuerStats(data);
 
