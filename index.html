@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<!DOCTYPE html>
-<html lang="ja">
+
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -12,6 +8,7 @@
 <title>国会議員 SSL / GlobalSign 調査</title>
 
 <style>
+
 :root{
   --bg:#eef4fb;
   --card:#ffffff;
@@ -21,18 +18,41 @@
   --blue:#2563eb;
 }
 
-*{ box-sizing:border-box; }
+*{
+  box-sizing:border-box;
+}
 
 body{
   margin:0;
   padding:24px;
-  background:linear-gradient(180deg,#eef5ff 0%,#f7f9fc 100%);
+
+  background:
+    linear-gradient(
+      180deg,
+      #eef5ff 0%,
+      #f7f9fc 100%
+    );
+
   color:var(--text);
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
 }
 
-.container{ max-width:1600px; margin:auto; }
-h1{ font-size:38px; margin-bottom:8px; font-weight:900; }
+.container{
+  max-width:1600px;
+  margin:auto;
+}
+
+h1{
+  font-size:38px;
+  margin-bottom:8px;
+  font-weight:900;
+}
 
 .description{
   color:var(--sub);
@@ -41,7 +61,9 @@ h1{ font-size:38px; margin-bottom:8px; font-weight:900; }
   font-size:15px;
 }
 
-.summary-group{ margin-bottom:36px; }
+.summary-group{
+  margin-bottom:36px;
+}
 
 .summary-title{
   font-size:18px;
@@ -59,20 +81,42 @@ h1{ font-size:38px; margin-bottom:8px; font-weight:900; }
 
 .summary{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(220px,1fr)
+    );
+
   gap:18px;
 }
 
 .card{
   background:#fff;
+
   border-radius:24px;
+
   padding:24px;
-  border-top:6px solid var(--blue);
-  box-shadow:0 2px 8px rgba(0,0,0,0.04),0 20px 40px rgba(0,0,0,0.04);
+
+  border-top:
+    6px solid var(--blue);
+
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.04),
+    0 20px 40px rgba(0,0,0,0.04);
 }
 
-.card-label{ color:var(--sub); font-size:13px; font-weight:700; }
-.card-value{ font-size:42px; font-weight:900; margin-top:12px; }
+.card-label{
+  color:var(--sub);
+  font-size:13px;
+  font-weight:700;
+}
+
+.card-value{
+  font-size:42px;
+  font-weight:900;
+  margin-top:12px;
+}
 
 .card-sub{
   margin-top:10px;
@@ -81,56 +125,106 @@ h1{ font-size:38px; margin-bottom:8px; font-weight:900; }
   line-height:1.6;
 }
 
-.section{ margin-top:48px; }
-.section h2{ margin-bottom:16px; font-size:26px; font-weight:900; }
+.section{
+  margin-top:48px;
+}
+
+.section h2{
+  margin-bottom:16px;
+  font-size:26px;
+  font-weight:900;
+}
 
 .table-wrap{
   overflow:auto;
+
   border-radius:24px;
+
   background:#fff;
-  box-shadow:0 2px 8px rgba(0,0,0,0.04),0 20px 40px rgba(0,0,0,0.04);
+
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.04),
+    0 20px 40px rgba(0,0,0,0.04);
 }
 
-table{ width:100%; border-collapse:collapse; }
+table{
+  width:100%;
+  border-collapse:collapse;
+}
 
 th{
   position:sticky;
   top:0;
+
   background:#f8fafc;
+
   padding:15px;
+
   text-align:left;
+
   font-size:13px;
   font-weight:800;
-  border-bottom:1px solid var(--line);
+
+  border-bottom:
+    1px solid var(--line);
+
   white-space:nowrap;
 }
 
 td{
   padding:14px 15px;
-  border-bottom:1px solid #eef2f7;
+
+  border-bottom:
+    1px solid #eef2f7;
+
   font-size:14px;
 }
 
-tr:nth-child(even){ background:#fbfdff; }
-tr:hover{ background:#edf5ff; }
+tr:nth-child(even){
+  background:#fbfdff;
+}
 
-a{ color:var(--blue); text-decoration:none; font-weight:600; }
-a:hover{ text-decoration:underline; }
+tr:hover{
+  background:#edf5ff;
+}
+
+a{
+  color:var(--blue);
+  text-decoration:none;
+  font-weight:600;
+}
+
+a:hover{
+  text-decoration:underline;
+}
 
 .badge{
   display:inline-flex;
   align-items:center;
   justify-content:center;
+
   border-radius:999px;
+
   padding:5px 11px;
+
   font-size:12px;
   font-weight:800;
 }
 
-.yes{ background:#dcfce7; color:#166534; }
-.no{ background:#fee2e2; color:#991b1b; }
+.yes{
+  background:#dcfce7;
+  color:#166534;
+}
 
-.highlight{ color:var(--blue); font-weight:900; }
+.no{
+  background:#fee2e2;
+  color:#991b1b;
+}
+
+.highlight{
+  color:var(--blue);
+  font-weight:900;
+}
 
 .controls{
   display:flex;
@@ -139,65 +233,150 @@ a:hover{ text-decoration:underline; }
   margin-bottom:20px;
 }
 
-input,select{
+input,
+select{
   border:1px solid var(--line);
+
   border-radius:14px;
+
   padding:11px 14px;
+
   background:#fff;
+
   font-size:14px;
 }
 
-input{ min-width:280px; }
+input{
+  min-width:280px;
+}
 
 button{
   border:none;
+
   border-radius:14px;
+
   padding:11px 20px;
+
   background:var(--blue);
+
   color:#fff;
+
   font-weight:800;
+
   cursor:pointer;
+
   transition:0.2s;
 }
 
-button:hover{ opacity:0.92; transform:translateY(-1px); }
-button:disabled{ opacity:0.5; cursor:not-allowed; }
+button:hover{
+  opacity:0.92;
+  transform:translateY(-1px);
+}
+
+button:disabled{
+  opacity:0.5;
+  cursor:not-allowed;
+}
 
 .party-badge{
   display:inline-flex;
   align-items:center;
+
   border-radius:999px;
+
   padding:5px 10px;
+
   font-size:12px;
   font-weight:800;
 }
 
-.party-自民{ background:#dbeafe; color:#1d4ed8; }
-.party-国民{ background:#fef3c7; color:#92400e; }
-.party-立憲{ background:#ede9fe; color:#6d28d9; }
-.party-れ新{ background:#fee2e2; color:#b91c1c; }
-.party-維新{ background:#dcfce7; color:#15803d; }
-.party-公明{ background:#e0e7ff; color:#3730a3; }
-.party-共産{ background:#ffe4e6; color:#be123c; }
-.party-参政{ background:#ffedd5; color:#c2410c; }
-.party-社民{ background:#fce7f3; color:#be185d; }
-.party-保守{ background:#ede9fe; color:#5b21b6; }
-.party-みらい{ background:#cffafe; color:#155e75; }
-.party-無所属{ background:#e5e7eb; color:#374151; }
-.party-不明{ background:#f3f4f6; color:#6b7280; }
+.party-自民{
+  background:#dbeafe;
+  color:#1d4ed8;
+}
+
+.party-国民{
+  background:#fef3c7;
+  color:#92400e;
+}
+
+.party-立憲{
+  background:#ede9fe;
+  color:#6d28d9;
+}
+
+.party-れ新{
+  background:#fee2e2;
+  color:#b91c1c;
+}
+
+.party-維新{
+  background:#dcfce7;
+  color:#15803d;
+}
+
+.party-公明{
+  background:#e0e7ff;
+  color:#3730a3;
+}
+
+.party-共産{
+  background:#ffe4e6;
+  color:#be123c;
+}
+
+.party-参政{
+  background:#ffedd5;
+  color:#c2410c;
+}
+
+.party-社民{
+  background:#fce7f3;
+  color:#be185d;
+}
+
+.party-保守{
+  background:#ede9fe;
+  color:#5b21b6;
+}
+
+.party-みらい{
+  background:#cffafe;
+  color:#155e75;
+}
+
+.party-無所属{
+  background:#e5e7eb;
+  color:#374151;
+}
+
+.party-不明{
+  background:#f3f4f6;
+  color:#6b7280;
+}
 
 .issuer-bar-wrap{
   width:140px;
   height:8px;
+
   background:#e5e7eb;
+
   border-radius:999px;
+
   overflow:hidden;
 }
 
 .issuer-bar{
   height:100%;
-  background:linear-gradient(90deg,#60a5fa,#2563eb);
+
+  background:
+    linear-gradient(
+      90deg,
+      #60a5fa,
+      #2563eb
+    );
 }
+
 </style>
 </head>
 
@@ -205,178 +384,222 @@ button:disabled{ opacity:0.5; cursor:not-allowed; }
 
 <div class="container">
 
-<h1>国会議員 SSL / GlobalSign 調査</h1>
+<h1>
+  国会議員 SSL / GlobalSign 調査
+</h1>
+
+<div
+  id="lastUpdated"
+  class="description"
+  style="
+    margin-top:-10px;
+    margin-bottom:20px;
+  "
+>
+  最終更新: -
+</div>
 
 <div class="description">
-国会議員公式サイトのHTTPS利用状況、認証局、GlobalSign証明書、
-GSサイトシール利用状況を自動調査したダッシュボードです。
+  国会議員公式サイトのHTTPS利用状況、
+  認証局、
+  GlobalSign証明書、
+  GSサイトシール利用状況を
+  自動調査したダッシュボードです。
 </div>
 
 <div class="summary-group">
-  <div class="summary-title">全体集計</div>
-  <div class="summary-note">全議員・全HTTPS利用サイトを母数にした基本集計です。</div>
+
+  <div class="summary-title">
+    全体集計
+  </div>
+
+  <div class="summary-note">
+    全議員・全HTTPS利用サイトを母数にした基本集計です。
+  </div>
 
   <div class="summary">
+
     <div class="card">
-      <div class="card-label">総議員数</div>
-      <div class="card-value" id="total">-</div>
+
+      <div class="card-label">
+        総議員数
+      </div>
+
+      <div
+        class="card-value"
+        id="total"
+      >
+        -
+      </div>
+
     </div>
 
     <div class="card">
-      <div class="card-label">SSL利用数</div>
-      <div class="card-value" id="sslCount">-</div>
-      <div class="card-sub" id="sslRate">-</div>
+
+      <div class="card-label">
+        SSL利用数
+      </div>
+
+      <div
+        class="card-value"
+        id="sslCount"
+      >
+        -
+      </div>
+
+      <div
+        class="card-sub"
+        id="sslRate"
+      >
+        -
+      </div>
+
     </div>
 
     <div class="card">
-      <div class="card-label">GlobalSign利用数</div>
-      <div class="card-value" id="gsCount">-</div>
-      <div class="card-sub">HTTPS利用サイト全体母数</div>
+
+      <div class="card-label">
+        GlobalSign利用数
+      </div>
+
+      <div
+        class="card-value"
+        id="gsCount"
+      >
+        -
+      </div>
+
+      <div class="card-sub">
+        HTTPS利用サイト全体母数
+      </div>
+
     </div>
 
     <div class="card">
-      <div class="card-label">GSサイトシール</div>
-      <div class="card-value" id="sealCount">-</div>
+
+      <div class="card-label">
+        GSサイトシール
+      </div>
+
+      <div
+        class="card-value"
+        id="sealCount"
+      >
+        -
+      </div>
+
     </div>
+
   </div>
 </div>
 
 <div class="summary-group">
-  <div class="summary-title">寄付4党 集計</div>
+
+  <div class="summary-title">
+    寄付4党 集計
+  </div>
+
   <div class="summary-note">
     自民・国民・立憲・れ新のみを対象にした集計です。
     URLなし・CA不明は母数から除外しています。
   </div>
 
   <div class="summary">
+
     <div class="card">
-      <div class="card-label">寄付4党 SSL利用数</div>
-      <div class="card-value" id="donationSslCount">-</div>
-      <div class="card-sub">自民・国民・立憲・れ新 のHTTPS利用サイト数</div>
+
+      <div class="card-label">
+        寄付4党 SSL利用数
+      </div>
+
+      <div
+        class="card-value"
+        id="donationSslCount"
+      >
+        -
+      </div>
+
+      <div class="card-sub">
+        自民・国民・立憲・れ新 のHTTPS利用サイト数
+      </div>
+
     </div>
 
     <div class="card">
-      <div class="card-label">寄付4党 GS利用数</div>
-      <div class="card-value" id="donationGsCount">-</div>
-      <div class="card-sub">寄付4党のHTTPS利用サイト内GlobalSign数</div>
+
+      <div class="card-label">
+        寄付4党 GS利用数
+      </div>
+
+      <div
+        class="card-value"
+        id="donationGsCount"
+      >
+        -
+      </div>
+
+      <div class="card-sub">
+        寄付4党のHTTPS利用サイト内GlobalSign数
+      </div>
+
     </div>
 
     <div class="card">
-      <div class="card-label">寄付4党 GSシェア</div>
-      <div class="card-value" id="gsShare">-</div>
-      <div class="card-sub">母数：4党 + SSLあり + URLあり + CA不明除外</div>
+
+      <div class="card-label">
+        寄付4党 GSシェア
+      </div>
+
+      <div
+        class="card-value"
+        id="gsShare"
+      >
+        -
+      </div>
+
+      <div class="card-sub">
+        母数：
+        4党 +
+        SSLあり +
+        URLあり +
+        CA不明除外
+      </div>
+
     </div>
+
   </div>
 </div>
 
-<div class="section">
-<h2>認証局 シェア</h2>
-
-<div class="description">
-HTTPS利用サイト全体を母数として、各認証局のシェアを集計しています。
-件数2以下の認証局は「その他」にまとめています。
-</div>
-
-<div class="table-wrap">
-<table>
-<thead>
-<tr>
-<th>認証局</th>
-<th>件数</th>
-<th>シェア</th>
-<th>割合</th>
-</tr>
-</thead>
-<tbody id="issuerBody"></tbody>
-</table>
-</div>
-</div>
-
-<div class="section">
-<h2>政党別 GSシェア</h2>
-
-<div class="description">
-各政党のHTTPS利用サイトを母数として、GlobalSign利用率を集計しています。
-</div>
-
-<div class="table-wrap">
-<table>
-<thead>
-<tr>
-<th>政党</th>
-<th>議員数</th>
-<th>SSL利用数</th>
-<th>GlobalSign数</th>
-<th>GSシェア</th>
-</tr>
-</thead>
-<tbody id="partyGsBody"></tbody>
-</table>
-</div>
-</div>
-
-<div class="section">
-<h2>議員一覧</h2>
-
-<div class="controls">
-<input id="searchInput" type="text" placeholder="名前・政党・URL・CA検索"/>
-
-<select id="houseFilter">
-<option value="">すべての院</option>
-<option value="衆議院">衆議院</option>
-<option value="参議院">参議院</option>
-</select>
-
-<select id="sealFilter">
-<option value="">シールすべて</option>
-<option value="true">シールあり</option>
-<option value="false">シールなし</option>
-</select>
-
-<button id="reloadBtn">更新</button>
-</div>
-
-<div class="table-wrap">
-<table>
-<thead>
-<tr>
-<th>院</th>
-<th>政党</th>
-<th>氏名</th>
-<th>公式サイト</th>
-<th>CA</th>
-<th>シール有無</th>
-</tr>
-</thead>
-<tbody id="tbody"></tbody>
-</table>
-</div>
-</div>
-
-</div>
-
 <script>
+
 let allData = [];
 
 const partyOrder = {
-  "自民": 1,
-  "国民": 2,
-  "立憲": 3,
-  "れ新": 4,
-  "維新": 5,
-  "公明": 6,
-  "共産": 7,
-  "参政": 8,
-  "社民": 9,
-  "保守": 10,
-  "みらい": 11,
-  "無所属": 12,
-  "不明": 999
+
+  "自民":1,
+  "国民":2,
+  "立憲":3,
+  "れ新":4,
+  "維新":5,
+  "公明":6,
+  "共産":7,
+  "参政":8,
+  "社民":9,
+  "保守":10,
+  "みらい":11,
+  "無所属":12,
+  "不明":999
 };
 
-const donationParties = ["自民", "国民", "立憲", "れ新"];
+const donationParties = [
+  "自民",
+  "国民",
+  "立憲",
+  "れ新"
+];
 
 const escapeHtml = (str) => {
+
   return String(str ?? "")
     .replaceAll("&","&amp;")
     .replaceAll("<","&lt;")
@@ -384,30 +607,47 @@ const escapeHtml = (str) => {
 };
 
 const badge = (v) => {
+
   if(v === true){
-    return `<span class="badge yes">あり</span>`;
+
+    return `
+      <span class="badge yes">
+        あり
+      </span>
+    `;
   }
-  return `<span class="badge no">なし</span>`;
+
+  return `
+    <span class="badge no">
+      なし
+    </span>
+  `;
 };
 
 const link = (url) => {
+
   if(!url){
     return "-";
   }
 
   return `
-    <a href="${escapeHtml(url)}" target="_blank">
+    <a
+      href="${escapeHtml(url)}"
+      target="_blank"
+    >
       ${escapeHtml(url)}
     </a>
   `;
 };
 
 const simplifyIssuer = (issuer) => {
+
   if(!issuer){
     return "不明";
   }
 
-  const s = issuer.toLowerCase();
+  const s =
+    issuer.toLowerCase();
 
   if(s.includes("globalsign")) return "GlobalSign";
   if(s.includes("let's encrypt")) return "Let's Encrypt";
@@ -427,267 +667,152 @@ const simplifyIssuer = (issuer) => {
 };
 
 const isGlobalSign = (row) => {
-  return simplifyIssuer(row.issuer) === "GlobalSign";
+
+  return (
+    simplifyIssuer(row.issuer)
+    ===
+    "GlobalSign"
+  );
 };
 
 const validSslRows = (data) => {
+
   return data.filter(
     x =>
-      x.https === true &&
-      x.official &&
+      x.https === true
+      &&
+      x.official
+      &&
       simplifyIssuer(x.issuer) !== "不明"
   );
 };
 
 const updateSummary = (data) => {
-  const total = data.length;
 
-  const sslRows = validSslRows(data);
-  const sslCount = sslRows.length;
-  const gsCount = sslRows.filter(x => isGlobalSign(x)).length;
-  const sealCount = data.filter(x => x.gs_seal === true).length;
+  const total =
+    data.length;
+
+  const sslRows =
+    validSslRows(data);
+
+  const sslCount =
+    sslRows.length;
+
+  const gsCount =
+    sslRows.filter(
+      x => isGlobalSign(x)
+    ).length;
+
+  const sealCount =
+    data.filter(
+      x => x.gs_seal === true
+    ).length;
 
   const sslRate =
-    total ? ((sslCount / total) * 100).toFixed(1) : "0.0";
+    total
+      ? (
+          (
+            sslCount
+            /
+            total
+          ) * 100
+        ).toFixed(1)
+      : "0.0";
 
-  const donationSsl = sslRows.filter(
-    x => donationParties.includes(x.party)
-  );
+  const donationSsl =
+    sslRows.filter(
+      x =>
+        donationParties.includes(
+          x.party
+        )
+    );
 
-  const donationGs = donationSsl.filter(
-    x => isGlobalSign(x)
-  );
+  const donationGs =
+    donationSsl.filter(
+      x => isGlobalSign(x)
+    );
 
   const gsShare =
     donationSsl.length
-      ? ((donationGs.length / donationSsl.length) * 100).toFixed(1)
+      ? (
+          (
+            donationGs.length
+            /
+            donationSsl.length
+          ) * 100
+        ).toFixed(1)
       : "0.0";
 
-  document.getElementById("total").textContent = total;
-  document.getElementById("sslCount").textContent = sslCount;
-  document.getElementById("sslRate").textContent = `SSL利用率 ${sslRate}%`;
-  document.getElementById("gsCount").textContent = gsCount;
-  document.getElementById("sealCount").textContent = sealCount;
-  document.getElementById("donationSslCount").textContent = donationSsl.length;
-  document.getElementById("donationGsCount").textContent = donationGs.length;
-  document.getElementById("gsShare").textContent = `${gsShare}%`;
-};
+  document.getElementById(
+    "total"
+  ).textContent =
+    total;
 
-const renderIssuerStats = (data) => {
-  const issuerMap = {};
-  const sslRows = validSslRows(data);
+  document.getElementById(
+    "sslCount"
+  ).textContent =
+    sslCount;
 
-  for(const row of sslRows){
-    const issuer = simplifyIssuer(row.issuer);
-    issuerMap[issuer] ??= 0;
-    issuerMap[issuer]++;
-  }
+  document.getElementById(
+    "sslRate"
+  ).textContent =
+    `SSL利用率 ${sslRate}%`;
 
-  const groupedMap = {};
+  document.getElementById(
+    "gsCount"
+  ).textContent =
+    gsCount;
 
-  for(const [issuer,count] of Object.entries(issuerMap)){
-    if(count <= 2){
-      groupedMap["その他"] ??= 0;
-      groupedMap["その他"] += count;
-    }else{
-      groupedMap[issuer] = count;
-    }
-  }
+  document.getElementById(
+    "sealCount"
+  ).textContent =
+    sealCount;
 
-  const html =
-    Object.entries(groupedMap)
-      .sort((a,b)=>b[1]-a[1])
-      .map(([issuer,count]) => {
-        const share =
-          sslRows.length
-            ? ((count / sslRows.length) * 100).toFixed(1)
-            : "0.0";
+  document.getElementById(
+    "donationSslCount"
+  ).textContent =
+    donationSsl.length;
 
-        const cls = issuer === "GlobalSign" ? "highlight" : "";
+  document.getElementById(
+    "donationGsCount"
+  ).textContent =
+    donationGs.length;
 
-        return `
-          <tr>
-            <td class="${cls}">${escapeHtml(issuer)}</td>
-            <td>${count}</td>
-            <td>${share}%</td>
-            <td>
-              <div class="issuer-bar-wrap">
-                <div class="issuer-bar" style="width:${share}%"></div>
-              </div>
-            </td>
-          </tr>
-        `;
-      })
-      .join("");
-
-  document.getElementById("issuerBody").innerHTML = html;
-};
-
-const renderPartyGsStats = (data) => {
-  const partyMap = {};
-  const sslRows = validSslRows(data);
-
-  for(const row of data){
-    const party = row.party || "不明";
-
-    partyMap[party] ??= {
-      total: 0,
-      ssl: 0,
-      gs: 0
-    };
-
-    partyMap[party].total++;
-  }
-
-  for(const row of sslRows){
-    const party = row.party || "不明";
-
-    partyMap[party] ??= {
-      total: 0,
-      ssl: 0,
-      gs: 0
-    };
-
-    partyMap[party].ssl++;
-
-    if(isGlobalSign(row)){
-      partyMap[party].gs++;
-    }
-  }
-
-  const html =
-    Object.entries(partyMap)
-      .sort((a,b) => {
-        const pa = partyOrder[a[0]] || 999;
-        const pb = partyOrder[b[0]] || 999;
-        return pa - pb;
-      })
-      .map(([party,stats]) => {
-        const share =
-          stats.ssl
-            ? ((stats.gs / stats.ssl) * 100).toFixed(1)
-            : "0.0";
-
-        return `
-          <tr>
-            <td>
-              <span class="party-badge party-${escapeHtml(party)}">
-                ${escapeHtml(party)}
-              </span>
-            </td>
-            <td>${stats.total}</td>
-            <td>${stats.ssl}</td>
-            <td>${stats.gs}</td>
-            <td><strong>${share}%</strong></td>
-          </tr>
-        `;
-      })
-      .join("");
-
-  document.getElementById("partyGsBody").innerHTML = html;
-};
-
-const renderTable = (data) => {
-  const sortedData =
-    [...data].sort((a,b) => {
-      const pa = partyOrder[a.party] || 999;
-      const pb = partyOrder[b.party] || 999;
-
-      if(pa !== pb){
-        return pa - pb;
-      }
-
-      return String(a.name || "").localeCompare(String(b.name || ""), "ja");
-    });
-
-  const html =
-    sortedData.map(row => {
-      return `
-        <tr>
-          <td>${escapeHtml(row.house)}</td>
-          <td>
-            <span class="party-badge party-${escapeHtml(row.party || "不明")}">
-              ${escapeHtml(row.party || "-")}
-            </span>
-          </td>
-          <td><strong>${escapeHtml(row.name)}</strong></td>
-          <td>${link(row.official)}</td>
-          <td>${escapeHtml(simplifyIssuer(row.issuer))}</td>
-          <td>${badge(row.gs_seal)}</td>
-        </tr>
-      `;
-    })
-    .join("");
-
-  document.getElementById("tbody").innerHTML = html;
-};
-
-const getFilteredData = () => {
-  const keyword = document.getElementById("searchInput").value.toLowerCase();
-  const house = document.getElementById("houseFilter").value;
-  const seal = document.getElementById("sealFilter").value;
-
-  return allData.filter(row => {
-    const text = [
-      row.name,
-      row.party,
-      row.official,
-      row.issuer
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    if(keyword && !text.includes(keyword)) return false;
-    if(house && row.house !== house) return false;
-    if(seal && String(row.gs_seal) !== seal) return false;
-
-    return true;
-  });
-};
-
-const render = () => {
-  const data = getFilteredData();
-
-  updateSummary(data);
-  renderIssuerStats(data);
-  renderPartyGsStats(data);
-  renderTable(data);
-};
-
-const reloadData = async () => {
-  const btn = document.getElementById("reloadBtn");
-
-  btn.disabled = true;
-  btn.textContent = "更新中...";
-
-  try{
-    const res = await fetch("./data.json?ts=" + Date.now());
-    allData = await res.json();
-    render();
-  }finally{
-    btn.disabled = false;
-    btn.textContent = "更新";
-  }
-};
-
-const setupEvents = () => {
-  for(const id of ["searchInput","houseFilter","sealFilter"]){
-    document.getElementById(id).addEventListener("input", render);
-    document.getElementById(id).addEventListener("change", render);
-  }
-
-  document.getElementById("reloadBtn").addEventListener("click", reloadData);
+  document.getElementById(
+    "gsShare"
+  ).textContent =
+    `${gsShare}%`;
 };
 
 const main = async () => {
-  const res = await fetch("./data.json?ts=" + Date.now());
-  allData = await res.json();
 
-  setupEvents();
-  render();
+  const res =
+    await fetch(
+      "./data.json?ts=" + Date.now()
+    );
+
+  const json =
+    await res.json();
+
+  allData =
+    json.data || [];
+
+  document.getElementById(
+    "lastUpdated"
+  ).textContent =
+
+    "最終更新: " +
+
+    (
+      json.updated_at
+      || "-"
+    );
+
+  updateSummary(allData);
 };
 
 main();
+
 </script>
 
 </body>
